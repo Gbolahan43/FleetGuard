@@ -1,9 +1,6 @@
 {
   "project": "fleetguard",
-  "model_name": "fleetguard_anomaly_model",
   "algorithm": "IsolationForest",
-  "supervised": false,
-  "target": "is_anomaly (fuel theft / route abuse / private use / excessive idle)",
   "features": [
     "speed_kmh",
     "fuel_level_pct",
@@ -18,21 +15,7 @@
     "idle_speed_ratio",
     "zone_breach"
   ],
-  "n_features": 12,
   "contamination": 0.12,
-  "n_estimators": 200,
-  "seed": 42,
   "n_records": 4800,
-  "n_vehicles": 10,
-  "hyperparameters": {
-    "bootstrap": false,
-    "contamination": 0.12,
-    "max_features": 1.0,
-    "max_samples": "auto",
-    "n_estimators": 200,
-    "n_jobs": -1,
-    "random_state": 42,
-    "verbose": 0,
-    "warm_start": false
-  }
+  "n_vehicles": 10
 }

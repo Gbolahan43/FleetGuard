@@ -3,7 +3,6 @@
   "total_vehicles": 10,
   "anomaly_count": 576,
   "anomaly_rate_pct": 12.0,
-  "top_vehicle": "LG-1000",
   "breakdown": {
     "fuel_theft": 188,
     "route_deviation": 181,

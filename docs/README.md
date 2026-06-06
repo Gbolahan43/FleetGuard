@@ -9,6 +9,7 @@ Central guide for the team. Start here, then drill into the doc for your workstr
 3. [api_contract.md](api_contract.md) — request/response shapes both paths must honour
 4. [data_schema.md](data_schema.md) — CSV columns, features, DynamoDB tables
 5. [team_guide.md](team_guide.md) — workstreams, repo map, build order, conventions
+6. [frontend_guide.md](frontend_guide.md) — frontend onboarding (if building UI)
 
 ## Deep technical specs
 
