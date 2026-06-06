@@ -20,7 +20,14 @@ $health = Invoke-RestMethod -Uri "$Base/healthz" -Method Get
 Write-Host "  status=$($health.status) model_loaded=$($health.model_loaded)"
 
 Write-Host "POST /api/v1/analyze-fleet..."
-$response = curl.exe -s -X POST "$Base/api/v1/analyze-fleet" -F "file=@$Csv" | ConvertFrom-Json
+$raw = curl.exe -s -X POST "$Base/api/v1/analyze-fleet" -F "file=@$Csv"
+$response = $raw | ConvertFrom-Json
+if ($response.detail) {
+    Write-Error "Analyze failed: $($response.detail)"
+}
+if (-not $response.summary) {
+    Write-Error "Unexpected response: $raw"
+}
 
 Write-Host "  total_rows=$($response.summary.total_rows) anomaly_count=$($response.summary.anomaly_count)"
 Write-Host "  top anomalies=$($response.anomalies.Count)"

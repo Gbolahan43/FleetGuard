@@ -126,7 +126,7 @@ NEXT_PUBLIC_BATCH_API_URL=    # Path B — App Runner
 
 ```env
 AWS_REGION=us-east-1
-MODEL_PATH=./models
+MODEL_PATH=ml/models
 BEDROCK_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0
 PERSIST_INCIDENTS=false
 ```
