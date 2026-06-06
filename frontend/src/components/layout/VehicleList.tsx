@@ -13,10 +13,19 @@ const statusDot: Record<string, { bg: string; shadow?: string }> = {
 const vehicleIcon = { truck: Truck, van: Package, motorcycle: Bike };
 
 export default function VehicleList() {
-  const { vehicles, selectedVehicle, setSelectedVehicle, setActiveTab, alerts } = useFleet();
+  const { vehicles, selectedVehicle, setSelectedVehicle, setActiveTab, setSelectedAlert, alerts } = useFleet();
 
   function handleSelect(v: Vehicle) {
     setSelectedVehicle(v);
+    setActiveTab("map");
+  }
+
+  function handleAlertClick(e: React.MouseEvent, v: Vehicle) {
+    e.stopPropagation();
+    const alert = alerts.find((a) => a.vehicleId === v.id && !a.resolved);
+    if (!alert) return;
+    setSelectedVehicle(v);
+    setSelectedAlert(alert);
     setActiveTab("map");
   }
 
@@ -113,7 +122,13 @@ export default function VehicleList() {
                 {/* Badge / chevron */}
                 {activeAlerts > 0 ? (
                   <span
-                    className="shrink-0 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => handleAlertClick(e, v)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") handleAlertClick(e as unknown as React.MouseEvent, v);
+                    }}
+                    className="shrink-0 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
                     style={{
                       background: "rgba(239,68,68,0.15)",
                       color: "#f87171",
@@ -135,17 +150,4 @@ export default function VehicleList() {
                 >
                   <div
                     className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${fuelPct}%`, background: fuelBg }}
-                  />
-                </div>
-                <span className="font-data text-[10px] shrink-0 w-10 text-right" style={{ color: "#334155" }}>
-                  {Math.round(v.currentPosition.speed)} km/h
-                </span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+                    style={{ width: `${fuelPct}%`, backgrou

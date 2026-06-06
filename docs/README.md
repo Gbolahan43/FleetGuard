@@ -17,8 +17,7 @@ Central guide for the team. Start here, then drill into the doc for your workstr
 | --- | --- | --- |
 | Architecture (hybrid A + B) | [../fleetguard_prep/docs/architecture.md](../fleetguard_prep/docs/architecture.md) | System design, AWS services, scaling path |
 | Technical specification | [../fleetguard_prep/docs/technicals.md](../fleetguard_prep/docs/technicals.md) | Implementation detail, env vars, IaC |
-| Build plan | [../fleetguard_prep/docs/plan.md](../fleetguard_prep/docs/plan.md) | Time-boxed hackathon timeline |
-| Statement of work | [../fleetguard_prep/docs/SOW.md](../fleetguard_prep/docs/SOW.md) | Deliverables & AWS service justification |
+| Statement of work | [../SOW.md](../SOW.md) | Deliverables & AWS service justification |
 
 ## Repo map
 
@@ -29,7 +28,7 @@ FleetGuard/
 ├── backend/           FastAPI — Path B batch analysis
 ├── ml/                IsolationForest pipeline + Lambda handler (Path A)
 ├── infrastructure/    Terraform + deploy scripts
-├── fleetguard_prep/   Working ML prototype (migrate → ml/)
+├── fleetguard_prep/   Architecture & technical docs (code → ml/)
 └── .github/           CI/CD workflows
 ```
 

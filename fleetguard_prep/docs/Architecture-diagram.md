@@ -144,7 +144,7 @@ flowchart TB
 | `.github/workflows/` | **GitHub Actions → OIDC** | Backend/infra deploy |
 | `frontend/amplify.yml` | **Amplify build spec** | `npm ci && npm run build` |
 
-Legacy reference code remains in `fleetguard_prep/`; active development uses `ml/` and `backend/`.
+Architecture reference docs live in `fleetguard_prep/docs/`; active code is in `ml/` and `backend/`.
 
 ---
 

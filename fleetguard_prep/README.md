@@ -1,13 +1,14 @@
-# Legacy — migrated to ml/
+# fleetguard_prep — documentation only
 
-All ML code, models, and scripts now live in **[../ml/](../ml/)**.
+ML code, models, and scripts were migrated to **[../ml/](../ml/)**. This folder now holds
+architecture and technical reference docs only.
 
-Use:
+| Doc | Purpose |
+| --- | --- |
+| [docs/Architecture-diagram.md](docs/Architecture-diagram.md) | System diagram + flows |
+| [docs/architecture.md](docs/architecture.md) | Hybrid Path A + B design |
+| [docs/technicals.md](docs/technicals.md) | Deploy detail, env vars, IaC |
 
-```powershell
-python ml/scripts/generate_data.py
-python ml/scripts/train.py
-pytest ml/tests/ -q
-```
+**Run ML locally:** see [../ml/README.md](../ml/README.md).
 
-See [../ml/README.md](../ml/README.md) and [../docs/team_guide.md](../docs/team_guide.md).
+**Statement of work:** [../SOW.md](../SOW.md).

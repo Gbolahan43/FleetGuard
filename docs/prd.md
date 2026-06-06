@@ -119,7 +119,7 @@ Detection is **unsupervised** (IsolationForest) — no labelled incidents requir
 | CloudWatch | Logs and metrics |
 | GitHub Actions (OIDC) | CI/CD for backend/infra (Amplify handles frontend) |
 
-Full justification: [../fleetguard_prep/docs/SOW.md](../fleetguard_prep/docs/SOW.md).
+Full justification: [../SOW.md](../SOW.md).
 
 ## 10. References
 

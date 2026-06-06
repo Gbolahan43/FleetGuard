@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  GitHub Actions OIDC — IAM role for FleetGuard deploy workflow.
+  Deploy once per AWS account: aws cloudformation deploy --template-file github-oidc.yaml ...
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: Gbolahan43
+    Description: GitHub org or username
+  GitHubRepo:
+    Type: String
+    Default: FleetGuard
+    Description: Repository name
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: Restrict OIDC to this branch (use * to allow any ref)
+  RoleName:
+    Type: String
+    Default: fleetguard-github-actions-deploy
+  CreateOidcProvider:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Set false if token.actions.githubusercontent.com provider already exists in this account
+
+Conditions:
+  ShouldCreateOidcProvider: !Equals [!Ref CreateOidcProvider, "true"]
+  RestrictBranch: !Not [!Equals [!Ref GitHubBranch, "*"]]
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03fa0216a7c0426a4318868310b
+        - 1c58a3a8518e8759f075efd625ed39008e6b0463
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
+
+  GitHubActionsDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: GitHub Actions deploy role for FleetGuard (SAM + ECR)
+      MaxSessionDuration: 3600
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateOidcProvider
+                - !Ref GitHubOidcProvider
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !If
+                  - RestrictBranch
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:*
+      Policies:
+        - PolicyName: FleetGuardGitHubDeploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # CloudFormation / SAM
+              - Sid: CloudFormationDeploy
+                Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: "*"
+              # SAM artifact buckets (created by SAM deploy --resolve-s3)
+              - Sid: SamArtifactsS3
+                Effect: Allow
+                Action:
+                  - s3:*
+                Resource: "*"
+              # Lambda, API Gateway, DynamoDB, EventBridge, Logs
+              - Sid: ServerlessStack
+                Effect: Allow
+                Action:
+                  - lambda:*
+                  - apigateway:*
+                  - dynamodb:*
+                  - events:*
+                  - logs:*
+                  - iam:PassRole
+                  - iam:GetRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource: "*"
+              # ECR push (Path B backend image)
+              - Sid: EcrPush
+                Effect: Allow
+                Action:
+                  - ecr:*
+                Resource: "*"
+              # Model upload to stack bucket
+              - Sid: ModelBucketObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource: "*"
+
+Outputs:
+  GitHubActionsRoleArn:
+    Description: Add to GitHub repo secret AWS_DEPLOY_ROLE_ARN
+    Value: !GetAtt GitHubActionsDeployRole.Arn
+  OidcProviderArn:
+    Description: OIDC provider ARN used in trust policy
+    Value: !If
+      - ShouldCreateOidcProvider
+      - !Ref GitHubOidcProvider
+      - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com

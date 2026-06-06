@@ -149,7 +149,7 @@ sequenceDiagram
 
 1. Clone repo → read [team_guide.md](team_guide.md)
 2. Copy `frontend/.env.example` → `.env.local` (API URLs after deploy)
-3. Run ML locally: `fleetguard_prep` scripts (see team guide)
+3. Run ML locally: `ml/scripts/` (see [team_guide.md](team_guide.md))
 4. Run backend: `uvicorn` (Path B)
 5. Run frontend: `npm run dev`
 

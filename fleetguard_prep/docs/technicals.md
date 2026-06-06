@@ -4,9 +4,9 @@ Implementation detail for the **hybrid FleetGuard platform**: **Path A (real-tim
 primary monitoring path, **Path B (FastAPI batch upload)** as the secondary audit path. Both
 share the same IsolationForest model and Bedrock insights.
 
-Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](plan.md).
+Pairs with [architecture.md](architecture.md) and [../../SOW.md](../../SOW.md).
 
-**Status:** Phase 1 (ML pipeline) complete. Artifacts marked `[TO BUILD]` do not exist yet.
+**Status:** ML pipeline and handlers live in `ml/` and `backend/`. SAM/IaC in `infrastructure/sam/`.
 
 ---
 
@@ -24,7 +24,7 @@ Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](p
 | D-8 | Bedrock — batch | **Claude Opus 4.6** (same profile) | Top-N insights via shared model id |
 | D-9 | Real-time `fuel_delta` | **Server-side via `vehicle-state` DynamoDB** | Removes fragile caller contract |
 | D-10 | Batch `fuel_delta` | **Server-side via pandas `groupby().diff()`** | Natural fit for uploaded CSV |
-| D-11 | Lambda packaging | **Container image (ECR), `arm64`** | sklearn exceeds zip limit |
+| D-11 | Lambda packaging | **Container image (ECR), `x86_64`** | sklearn exceeds zip limit; GitHub Actions runners are amd64 |
 | D-12 | Batch hosting | **AWS App Runner** (FastAPI container) | Always warm, simple deploy from ECR |
 | D-13 | Frontend | **Next.js (App Router)** — two tabs: Live Monitor + Analyze Logs | |
 | D-14 | Frontend hosting | **AWS Amplify Hosting** (Git → `frontend/`) | Managed Next.js build/deploy, HTTPS, env vars; no manual S3/CloudFront wiring |
@@ -38,18 +38,18 @@ Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](p
 
 | Component | Location | State | Workstream |
 | --- | --- | --- | --- |
-| Telemetry generator | `fleetguard_prep/src/fleetguard_generate_data.py` | ✅ Done | - |
-| Trainer | `fleetguard_prep/src/fleetguard_train.py` | ✅ Done | - |
-| Model artifacts | `fleetguard_prep/models/` | ✅ Done | - |
-| Shared inference core | `backend/app/ml_engine/inference_core.py` | `[TO BUILD]` | Shared |
-| Real-time handler | `fleetguard_prep/src/fleetguard_lambda_handler.py` | ✅ Written; needs `GET /incidents` + `vehicle-state` | A |
-| Lambda container | `fleetguard_prep/infra/Dockerfile.lambda` | `[TO BUILD]` | A |
-| SAM IaC | `fleetguard_prep/infra/template.yaml` | `[TO BUILD]` | A |
-| Replay + seeder | `fleetguard_prep/src/fleetguard_replay.py` | `[TO BUILD]` | A |
-| FastAPI batch service | `backend/app/` | `[TO BUILD]` | B |
-| App Runner Dockerfile | `backend/Dockerfile` | `[TO BUILD]` | B |
-| CI/CD | `.github/workflows/aws-deploy.yml` | `[TO BUILD]` | Infra |
-| Frontend | `frontend/` (Next.js) | `[TO BUILD]` | C |
+| Telemetry generator | `ml/scripts/generate_data.py` | ✅ Done | - |
+| Trainer | `ml/scripts/train.py` | ✅ Done | - |
+| Model artifacts | `ml/models/` | ✅ Done | - |
+| Shared inference core | `ml/src/inference/inference_core.py` | ✅ Done | Shared |
+| Real-time handler | `ml/src/realtime/handler.py` | ✅ Done | A |
+| Lambda container | `ml/Dockerfile.lambda` | ✅ Done | A |
+| SAM IaC | `infrastructure/sam/template.yaml` | ✅ Done | A |
+| Replay + seeder | `ml/scripts/replay.py` | ✅ Done | A |
+| FastAPI batch service | `backend/app/` | ✅ Done | B |
+| App Runner Dockerfile | `backend/Dockerfile` | ✅ Done | B |
+| CI/CD | `.github/workflows/aws-deploy.yml` | ✅ Done | Infra |
+| Frontend | `frontend/` (Next.js) | ✅ Done | C |
 
 ### Workstreams
 
@@ -65,12 +65,12 @@ Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](p
 ### 2.1 Lambda container
 
 ```dockerfile
-# fleetguard_prep/infra/Dockerfile.lambda
+# ml/Dockerfile.lambda
 FROM public.ecr.aws/lambda/python:3.11
 COPY requirements-lambda.txt .
 RUN pip install --no-cache-dir -r requirements-lambda.txt
 COPY src/ ${LAMBDA_TASK_ROOT}/
-CMD ["fleetguard_lambda_handler.handler"]
+CMD ["realtime.handler.handler"]
 ```
 
 `requirements-lambda.txt` — pin scikit-learn to the **exact training version**:
@@ -83,14 +83,14 @@ boto3>=1.34
 
 Config: **512 MB**, **30 s**, **`arm64`**, container image.
 
-### 2.2 Handler changes  `[TO BUILD]`
+### 2.2 Handler
 
-Existing `fleetguard_lambda_handler.py` implements `POST /score`. Add:
+`ml/src/realtime/handler.py` implements:
 
-1. **`GET /incidents`** — dashboard feed (`?limit=50`, `?vehicle_id=`, filter `?source=realtime`).
-2. **`vehicle-state` table** — per-vehicle last `fuel_level_pct` (and optionally lat/lng); compute
-   `fuel_delta` on each ping server-side (**D-9**).
-3. **`source: "realtime"`** on every incident write.
+1. **`POST /score`** — score pings, write incidents, update vehicle state.
+2. **`GET /incidents`** — dashboard feed (`?limit=50`, `?vehicle_id=`, filter `?source=realtime`).
+3. **`vehicle-state` table** — per-vehicle last `fuel_level_pct`; compute `fuel_delta` server-side (**D-9**).
+4. **`source: "realtime"`** on every incident write.
 
 ### 2.3 Environment variables (Lambda)
 
@@ -128,11 +128,11 @@ Existing `fleetguard_lambda_handler.py` implements `POST /score`. Add:
 
 ```bash
 # Simulate live telemetry (Path A demo)
-python fleetguard_prep/src/fleetguard_replay.py \
+python ml/scripts/replay.py \
   --api $NEXT_PUBLIC_API_URL --mode replay [--limit N]
 
 # Pre-seed incidents for Live Monitor fallback
-python fleetguard_prep/src/fleetguard_replay.py \
+python ml/scripts/replay.py \
   --api $NEXT_PUBLIC_API_URL --mode seed
 ```
 
@@ -169,7 +169,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
-COPY ../fleetguard_prep/models/ ./models/   # or download from S3 at startup
+COPY ml/models/ ./models/   # or download from S3 at startup
 EXPOSE 8080
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
@@ -217,7 +217,7 @@ s3://<bucket>/fleetguard-model/
 | A (Lambda) | S3 download on cold start, cache in `/tmp` |
 | B (FastAPI) | Bundled in image (demo) or S3 at startup (prod) |
 
-Feature order (12 cols): see `fleetguard_feature_cols.json` in `fleetguard_prep/models/`.
+Feature order (12 cols): see `fleetguard_feature_cols.json` in `ml/models/`.
 
 ### 4.1 `inference_core.py` contract  `[TO BUILD]`
 

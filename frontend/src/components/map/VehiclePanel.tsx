@@ -1,5 +1,5 @@
 "use client";
-import { X, Navigation, Fuel, AlertTriangle, Clock, Phone, MapPin } from "lucide-react";
+import { X, Navigation, Fuel, AlertTriangle, Clock, Phone, MapPin, Route } from "lucide-react";
 import { useFleet } from "@/lib/fleetStore";
 import { SeverityBadge } from "@/components/ui/Badge";
 import { formatDistanceToNow } from "date-fns";
@@ -11,14 +11,46 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   offline:    { color: "text-slate-600", label: "Offline" },
 };
 
+function formatCoord(value: number): string {
+  return value.toFixed(4);
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function routeHistoryKm(history: { lat: number; lng: number }[]): number {
+  let total = 0;
+  for (let i = 1; i < history.length; i++) {
+    total += haversineKm(
+      history[i - 1].lat,
+      history[i - 1].lng,
+      history[i].lat,
+      history[i].lng
+    );
+  }
+  return Math.round(total * 10) / 10;
+}
+
 export default function VehiclePanel() {
-  const { selectedVehicle, setSelectedVehicle, alerts } = useFleet();
+  const { selectedVehicle, setSelectedVehicle, alerts, setSelectedAlert } = useFleet();
   if (!selectedVehicle) return null;
 
   const vehicleAlerts = alerts.filter(a => a.vehicleId === selectedVehicle.id && !a.resolved);
   const status = statusConfig[selectedVehicle.status];
   const fuel = Math.round(selectedVehicle.currentPosition.fuelLevel);
   const fuelColor = fuel < 20 ? "bg-red-500" : fuel < 40 ? "bg-amber-500" : "bg-cyan-500";
+  const trackKm = routeHistoryKm(selectedVehicle.routeHistory);
+  const planned = selectedVehicle.plannedRoute;
+  const routeStart = planned[0];
+  const routeEnd = planned[planned.length - 1];
+  const deviationAlert = vehicleAlerts.find((a) => a.type === "route-deviation");
 
   return (
     <div className="absolute top-4 right-4 w-72 z-[1000] animate-fade-up">
@@ -105,6 +137,48 @@ export default function VehiclePanel() {
           <span className="text-[10px] text-slate-400">{selectedVehicle.assignedZone}</span>
         </div>
 
+        {/* Route info */}
+        <div className="px-4 py-3 border-b border-[#1e3254] space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <Route size={11} className="text-cyan-400" />
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.12em]">
+              Route Info
+            </span>
+          </div>
+          <div className="space-y-1.5 text-[11px]">
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-600 shrink-0">Approved route</span>
+              <span className="text-slate-300 text-right font-data">
+                {routeStart && routeEnd
+                  ? `${formatCoord(routeStart[0])}, ${formatCoord(routeStart[1])} → ${formatCoord(routeEnd[0])}, ${formatCoord(routeEnd[1])}`
+                  : "Not configured"}
+              </span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-600 shrink-0">Current position</span>
+              <span className="text-slate-300 font-data">
+                {formatCoord(selectedVehicle.currentPosition.lat)}, {formatCoord(selectedVehicle.currentPosition.lng)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-600 shrink-0">Recent track</span>
+              <span className="text-slate-300">
+                {trackKm} km · {selectedVehicle.routeHistory.length} pings
+              </span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-600 shrink-0">Today&apos;s distance</span>
+              <span className="text-slate-300">{selectedVehicle.todayDistance} km</span>
+            </div>
+            {deviationAlert?.deviationKm != null && (
+              <div className="flex justify-between gap-2">
+                <span className="text-red-400/80 shrink-0">Route deviation</span>
+                <span className="text-red-400 font-data">{deviationAlert.deviationKm.toFixed(1)} km off route</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Alerts */}
         {vehicleAlerts.length > 0 && (
           <div className="p-3 space-y-2">
@@ -112,9 +186,11 @@ export default function VehiclePanel() {
               Active Alerts
             </p>
             {vehicleAlerts.slice(0, 2).map((alert) => (
-              <div
+              <button
                 key={alert.id}
-                className="bg-red-500/5 border border-red-900/50 rounded-xl p-3"
+                type="button"
+                onClick={() => setSelectedAlert(alert)}
+                className="w-full text-left bg-red-500/5 border border-red-900/50 rounded-xl p-3 hover:bg-red-500/10 transition-colors"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <SeverityBadge severity={alert.severity} />
@@ -128,7 +204,7 @@ export default function VehiclePanel() {
                     ₦{(alert.fuelLost * 1050).toLocaleString()} estimated loss
                   </p>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -138,4 +214,3 @@ export default function VehiclePanel() {
       </div>
     </div>
   );
-}

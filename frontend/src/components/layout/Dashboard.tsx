@@ -4,6 +4,7 @@ import { useFleet } from "@/lib/fleetStore";
 import TopBar from "@/components/layout/TopBar";
 import VehicleList from "@/components/layout/VehicleList";
 import AlertsPanel from "@/components/alerts/AlertsPanel";
+import AlertDrawer from "@/components/alerts/AlertDrawer";
 import AnalyticsPanel from "@/components/charts/AnalyticsPanel";
 import StatCard from "@/components/ui/StatCard";
 import VehiclePanel from "@/components/map/VehiclePanel";
@@ -22,14 +23,30 @@ const FleetMap = dynamic(() => import("@/components/map/FleetMap"), {
 });
 
 export default function Dashboard() {
-  const { stats, activeTab, isLoading, error } = useFleet();
+  const {
+    stats,
+    vehicles,
+    alerts,
+    activeTab,
+    isLoading,
+    error,
+    selectedAlert,
+    setSelectedAlert,
+  } = useFleet();
+
+  const onRoute = vehicles.filter((v) => v.status === "on-route").length;
+  const idle = vehicles.filter((v) => v.status === "idle").length;
+  const alertCount = vehicles.filter((v) => v.status === "alert").length;
+  const unresolvedAlerts = alerts.filter((a) => !a.resolved).length;
+  const fuelTheftAlerts = alerts.filter((a) => a.type === "fuel-theft" && !a.resolved).length;
 
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center" style={{ background: "#020d18" }}>
         <div className="text-center">
           <div className="w-8 h-8 border border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm tracking-wider" style={{ color: "#94a3b8" }}>Analyzing fleet data with ML...</p>
+          <p className="text-sm tracking-wider" style={{ color: "#94a3b8" }}>Analyzing fleet data with ML…</p>
+          <p className="text-xs mt-2" style={{ color: "#64748b" }}>First load can take up to a minute while the backend scores ~4,800 rows.</p>
         </div>
       </div>
     );
@@ -68,7 +85,7 @@ export default function Dashboard() {
           label="Active Vehicles"
           value={`${stats.activeVehicles}/${stats.totalVehicles}`}
           icon={Truck}
-          sub="2 on route, 1 idle"
+          sub={`${onRoute} on route · ${idle} idle · ${alertCount} alert`}
         />
         <StatCard
           label="Alerts Today"
@@ -76,14 +93,14 @@ export default function Dashboard() {
           icon={AlertTriangle}
           variant="danger"
           pulse={stats.alertsToday > 0}
-          sub="2 unresolved"
+          sub={`${unresolvedAlerts} unresolved`}
         />
         <StatCard
           label="Fuel Theft"
           value={`${stats.fuelTheftLiters}L`}
           icon={Fuel}
           variant="warning"
-          sub="Suspected today"
+          sub={fuelTheftAlerts > 0 ? `${fuelTheftAlerts} incident(s)` : "None flagged"}
         />
         <StatCard
           label="Est. Loss"
@@ -134,6 +151,13 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {selectedAlert && (
+        <AlertDrawer
+          alert={selectedAlert}
+          onClose={() => setSelectedAlert(null)}
+        />
+      )}
     </div>
   );
 }

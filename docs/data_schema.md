@@ -34,7 +34,7 @@ Used by: batch upload (Path B), mock generator, CSV replayer (Path A).
 
 ### 1.3 Sample file
 
-`fleetguard_prep/mock_data/fleetguard_telemetry.csv` — 4,800 rows, 10 vehicles, ~12% anomalies.
+`ml/data/mock/fleetguard_telemetry.csv` — 4,800 rows, 10 vehicles, ~12% anomalies.
 
 ### 1.4 Approved delivery zones (Lagos)
 

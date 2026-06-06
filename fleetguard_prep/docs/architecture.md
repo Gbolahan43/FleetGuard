@@ -39,21 +39,24 @@ fleetguard-monorepo/
 │   │   └── main.py
 │   ├── requirements.txt
 │   └── Dockerfile                     # App Runner image
-├── fleetguard_prep/                   # Real-time path (Path A) — existing ML prep
+├── ml/                                # ML pipeline + Path A Lambda handler
 │   ├── src/
-│   │   ├── fleetguard_lambda_handler.py
-│   │   ├── fleetguard_generate_data.py
-│   │   ├── fleetguard_train.py
-│   │   └── fleetguard_replay.py
-│   ├── models/                        # trained artifacts (source of truth)
-│   └── infra/template.yaml            # SAM: Lambda + API Gateway + DynamoDB
+│   │   ├── generate/                  # mock telemetry
+│   │   ├── train/                     # IsolationForest trainer
+│   │   ├── inference/                 # shared scoring (A + B)
+│   │   └── realtime/handler.py        # POST /score, GET /incidents
+│   ├── models/                        # trained artifacts
+│   ├── scripts/                       # generate_data, train, replay
+│   └── Dockerfile.lambda
+├── infrastructure/sam/                # SAM: Lambda + API Gateway + DynamoDB
 ├── frontend/                          # Next.js dashboard (both paths)
 │   └── src/{app,components,hooks,lib,types}
+├── fleetguard_prep/docs/              # architecture & technical reference (docs only)
 └── docs/
 ```
 
-> `fleetguard_prep/` holds the proven ML pipeline and Lambda handler. `backend/ml_engine/` should
-> import or mirror `inference_core` so batch and real-time scores never diverge.
+> All ML code lives in `ml/`. Path B imports `inference_core` from `ml/src` so batch and
+> real-time scores stay aligned.
 
 ---
 

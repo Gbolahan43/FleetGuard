@@ -187,13 +187,9 @@ function mapAlerts(
   });
 }
 
-function computeStats(
-  vehicles: Vehicle[],
-  alerts: Alert[],
-  summary: MLSummary
-): FleetStats {
-  const totalVehicles = summary.total_vehicles;
-  const activeVehicles = vehicles.filter((v) => v.status === "on-route").length;
+function computeStats(vehicles: Vehicle[], alerts: Alert[], summary?: MLSummary): FleetStats {
+  const totalVehicles = summary?.total_vehicles ?? vehicles.length;
+  const activeVehicles = vehicles.filter((v) => v.status !== "offline").length;
   const alertsToday = alerts.filter((a) => !a.resolved).length;
   const fuelTheftLiters = alerts
     .filter((a) => a.type === "fuel-theft" && !a.resolved)
@@ -274,12 +270,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
       setAlerts(mappedAlerts);
       setVehicles(apiVehicles);
-      setStats((prev) => ({
-        ...prev,
-        totalVehicles: apiVehicles.length,
-        activeVehicles: apiVehicles.filter((v) => v.status !== "offline").length,
-        alertsToday: mappedAlerts.filter((a) => !a.resolved).length,
-      }));
+      setStats(computeStats(apiVehicles, mappedAlerts));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load incidents");
@@ -361,13 +352,19 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (vehicles.length === 0) return;
+    setStats(computeStats(vehicles, alerts));
+  }, [vehicles, alerts]);
+
+  useEffect(() => {
+    if (vehicles.length === 0) return;
 
     const interval = setInterval(() => {
       setVehicles((prev) =>
         prev.map((v) => {
           if (v.status === "offline") return v;
 
-          const speed = v.status === "alert" || v.status === "idle"
+          const hasActiveAlert = v.alerts.some((a) => !a.resolved);
+          const speed = hasActiveAlert || v.status === "idle"
             ? 0.5 + Math.random() * 3
             : 15 + Math.random() * 40;
 
@@ -384,9 +381,18 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
             fuelLevel: newFuel,
           };
 
+          let newStatus = v.status;
+          if (hasActiveAlert) {
+            newStatus = "alert";
+          } else if (speed > 3) {
+            newStatus = "on-route";
+          } else if (speed <= 1) {
+            newStatus = "idle";
+          }
+
           return {
             ...v,
-            status: speed > 3 ? ("on-route" as const) : v.status,
+            status: newStatus,
             currentPosition: {
               ...v.currentPosition,
               lat: newLat,
