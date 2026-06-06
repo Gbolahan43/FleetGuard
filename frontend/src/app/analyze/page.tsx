@@ -1,44 +1,25 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Upload, FileText, AlertTriangle, CheckCircle,
   TrendingDown, Fuel, Route, Clock, ChevronDown, ChevronUp,
   BarChart2, ArrowLeft, Loader2, Truck, Brain,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  analyzeFleetCsv,
+  breakdownCount,
+  checkBatchHealth,
+  estimateLossNaira,
+  suspicionPercent,
+  type AnomalyReport,
+  type AnalyzeFleetResponse,
+} from "@/lib/api/batch";
+import { getBatchApiUrl } from "@/lib/env";
 
-interface ScoredRow {
-  trip_id?: string;
-  vehicle_id?: string;
-  driver_id?: string;
-  anomaly_score: number;
-  is_anomaly: boolean | number;
-  anomaly_type?: string;
-  fuel_consumed?: number;
-  distance_km?: number;
-  idle_minutes?: number;
-  [key: string]: unknown;
-}
-
-interface AnalyzeResponse {
-  total_records: number;
-  anomalies_detected: number;
-  anomaly_rate: number;
-  top_anomalies: ScoredRow[];
-  summary: {
-    fuel_theft_suspected: number;
-    route_deviations: number;
-    excessive_idle: number;
-    estimated_loss_naira: number;
-  };
-  ai_insight?: string;
-}
-
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8080";
-
-function scoreColor(score: number) {
-  if (score > 0.7) return { text: "text-red-400", bar: "bg-red-500", bg: "bg-red-500/5 border-red-900/40" };
-  if (score > 0.4) return { text: "text-amber-400", bar: "bg-amber-500", bg: "bg-amber-500/5 border-amber-900/40" };
+function scoreColor(pct: number) {
+  if (pct > 70) return { text: "text-red-400", bar: "bg-red-500", bg: "bg-red-500/5 border-red-900/40" };
+  if (pct > 40) return { text: "text-amber-400", bar: "bg-amber-500", bg: "bg-amber-500/5 border-amber-900/40" };
   return { text: "text-emerald-400", bar: "bg-emerald-500", bg: "bg-emerald-500/5 border-emerald-900/40" };
 }
 
@@ -66,18 +47,11 @@ function SummaryCard({ label, value, sub, icon: Icon, variant = "default" }: {
   );
 }
 
-function AnomalyRow({ row, idx }: { row: ScoredRow; idx: number }) {
+function AnomalyRow({ row, idx }: { row: AnomalyReport; idx: number }) {
   const [open, setOpen] = useState(false);
-  const score = row.anomaly_score ?? 0;
-  const c = scoreColor(score);
-  const plate = row.vehicle_id ?? row.trip_id ?? `Row ${idx + 1}`;
-  const driver = row.driver_id ?? "—";
-  const type = row.anomaly_type ?? (row.is_anomaly ? "Anomaly" : "Normal");
-  const pct = Math.round(score * 100);
-
-  const extraFields = Object.entries(row).filter(
-    ([k]) => !["anomaly_score","is_anomaly","anomaly_type","vehicle_id","trip_id","driver_id"].includes(k)
-  );
+  const pct = suspicionPercent(row.score);
+  const c = scoreColor(pct);
+  const type = row.anomaly_type?.replace(/_/g, " ") ?? "anomaly";
 
   return (
     <div className={`border rounded-xl overflow-hidden ${c.bg} transition-all duration-200`}>
@@ -87,8 +61,8 @@ function AnomalyRow({ row, idx }: { row: ScoredRow; idx: number }) {
       >
         <span className="text-[10px] text-slate-700 font-data w-5 shrink-0">{idx + 1}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-mono font-semibold text-white truncate leading-none">{plate}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{driver} · <span className="text-slate-600">{type}</span></p>
+          <p className="text-sm font-mono font-semibold text-white truncate leading-none">{row.vehicle_id}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">{row.timestamp} · <span className="text-slate-600 capitalize">{type}</span></p>
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="w-20 h-1.5 bg-[#0f1f35] rounded-full overflow-hidden">
@@ -102,20 +76,40 @@ function AnomalyRow({ row, idx }: { row: ScoredRow; idx: number }) {
         }
       </button>
 
-      {open && extraFields.length > 0 && (
-        <div className="px-4 pb-4 pt-1 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t border-[#1e3254]/40">
-          {extraFields.map(([k, v]) => (
-            <div key={k} className="bg-[#0f1f35]/60 rounded-lg p-2.5">
-              <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-0.5 capitalize">
-                {k.replace(/_/g, " ")}
-              </p>
-              <p className="text-xs text-slate-300 font-data font-medium truncate">{String(v ?? "—")}</p>
-            </div>
-          ))}
+      {open && row.report && (
+        <div className="px-4 pb-4 pt-1 border-t border-[#1e3254]/40">
+          <p className="text-xs text-slate-400 leading-relaxed mt-2">{row.report}</p>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {[
+              ["Lat", row.lat.toFixed(4)],
+              ["Lng", row.lng.toFixed(4)],
+              ["Score", row.score.toFixed(4)],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-[#0f1f35]/60 rounded-lg p-2.5">
+                <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-0.5">{k}</p>
+                <p className="text-xs text-slate-300 font-data font-medium">{v}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+function getDisplayStats(result: AnalyzeFleetResponse) {
+  const { summary } = result;
+  const breakdown = summary.breakdown ?? {};
+  return {
+    totalRecords: summary.total_rows,
+    anomaliesDetected: summary.anomaly_count,
+    anomalyRate: summary.anomaly_rate_pct / 100,
+    fuelTheft: breakdownCount(breakdown, "fuel_theft", "fuel-theft"),
+    routeDeviations: breakdownCount(breakdown, "route_deviation", "route-deviation"),
+    excessiveIdle: breakdownCount(breakdown, "excessive_idle", "idle-excess"),
+    estimatedLoss: estimateLossNaira(breakdown),
+    aiInsight: result.anomalies[0]?.report,
+  };
 }
 
 export default function AnalyzePage() {
@@ -123,8 +117,22 @@ export default function AnalyzePage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [result, setResult] = useState<AnalyzeFleetResponse | null>(null);
+  const [backendStatus, setBackendStatus] = useState<string>("Checking backend…");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    checkBatchHealth().then(({ ok, modelLoaded }) => {
+      const url = getBatchApiUrl();
+      if (!ok) {
+        setBackendStatus(`Offline · ${url}`);
+        return;
+      }
+      setBackendStatus(
+        modelLoaded ? `Connected · ${url}` : `Connected (model loading) · ${url}`
+      );
+    });
+  }, []);
 
   const handleFile = useCallback((f: File) => {
     if (!f.name.endsWith(".csv")) { setError("Please upload a .csv file."); return; }
@@ -141,21 +149,18 @@ export default function AnalyzePage() {
     if (!file) return;
     setLoading(true); setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(`${BACKEND}/api/v1/analyze-fleet`, { method: "POST", body: form });
-      if (!res.ok) throw new Error((await res.text()) || `Server error ${res.status}`);
-      setResult(await res.json());
+      setResult(await analyzeFleetCsv(file));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reach backend. Is it running on port 8080?");
+      setError(err instanceof Error ? err.message : "Could not reach batch API. Is the backend running?");
     } finally {
       setLoading(false);
     }
   }
 
+  const stats = result ? getDisplayStats(result) : null;
+
   return (
     <div className="min-h-screen bg-[#020d18] text-white relative">
-      {/* Background grid */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -167,7 +172,6 @@ export default function AnalyzePage() {
         }}
       />
 
-      {/* Nav */}
       <header className="relative z-10 h-14 border-b border-[#1e3254] bg-[#0a1628]/90 backdrop-blur-xl flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
           <Link
@@ -187,13 +191,12 @@ export default function AnalyzePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-          <span className="text-[10px] text-slate-500 font-medium">Backend connected · port 8080</span>
+          <div className={`w-1.5 h-1.5 rounded-full pulse-dot ${backendStatus.startsWith("Connected") ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <span className="text-[10px] text-slate-500 font-medium max-w-[240px] truncate">{backendStatus}</span>
         </div>
       </header>
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 py-10">
-        {/* Page title */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
             <Truck size={14} className="text-cyan-500" />
@@ -201,11 +204,10 @@ export default function AnalyzePage() {
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Fleet Log Analysis</h1>
           <p className="text-slate-500 text-sm mt-1.5 leading-relaxed">
-            Upload a trip telemetry CSV. The IsolationForest model (F1 = 0.994) scores every row for anomalies.
+            Upload a trip telemetry CSV. The IsolationForest model scores every row for anomalies.
           </p>
         </div>
 
-        {/* Upload zone */}
         {!result && (
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -220,7 +222,6 @@ export default function AnalyzePage() {
                 : "border-[#1e3254] hover:border-[#2d4a6e] bg-[#0a1628]/50 hover:bg-[#0a1628]/80"
             }`}
           >
-            {/* Background glow when dragging */}
             {dragging && (
               <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent pointer-events-none" />
             )}
@@ -248,14 +249,13 @@ export default function AnalyzePage() {
                 <p className="text-slate-600 text-sm mt-1">or click to browse files</p>
                 <div className="mt-4 inline-flex items-center gap-2 text-xs text-slate-700 bg-[#0f1f35] border border-[#1e3254] rounded-lg px-3 py-1.5">
                   <FileText size={11} />
-                  ml/data/mock/fleetguard_telemetry.csv
+                  public/samples/fleetguard_telemetry.csv
                 </div>
               </>
             )}
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="mt-4 flex items-start gap-3 bg-red-500/5 border border-red-900/50 rounded-xl p-4 animate-fade-up">
             <div className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -268,7 +268,6 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {/* Run button */}
         {file && !result && (
           <button
             onClick={analyze}
@@ -292,10 +291,8 @@ export default function AnalyzePage() {
           </button>
         )}
 
-        {/* Results */}
-        {result && (
+        {result && stats && (
           <div className="space-y-6 animate-fade-up">
-            {/* Result header */}
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white tracking-tight">Analysis Results</h2>
@@ -310,52 +307,49 @@ export default function AnalyzePage() {
               </button>
             </div>
 
-            {/* Anomaly rate banner */}
             <div className={`rounded-xl border p-4 flex items-center gap-4 ${
-              result.anomaly_rate > 0.1
+              stats.anomalyRate > 0.1
                 ? "bg-red-500/5 border-red-900/40"
                 : "bg-emerald-500/5 border-emerald-900/40"
             }`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                result.anomaly_rate > 0.1 ? "bg-red-500/10 border border-red-500/20" : "bg-emerald-500/10 border border-emerald-500/20"
+                stats.anomalyRate > 0.1 ? "bg-red-500/10 border border-red-500/20" : "bg-emerald-500/10 border border-emerald-500/20"
               }`}>
-                {result.anomaly_rate > 0.1
+                {stats.anomalyRate > 0.1
                   ? <AlertTriangle size={18} className="text-red-400" />
                   : <CheckCircle size={18} className="text-emerald-400" />
                 }
               </div>
               <div>
-                <p className={`text-sm font-semibold ${result.anomaly_rate > 0.1 ? "text-red-300" : "text-emerald-300"}`}>
-                  {(result.anomaly_rate * 100).toFixed(1)}% anomaly rate detected
+                <p className={`text-sm font-semibold ${stats.anomalyRate > 0.1 ? "text-red-300" : "text-emerald-300"}`}>
+                  {result.summary.anomaly_rate_pct.toFixed(1)}% anomaly rate detected
                 </p>
                 <p className="text-xs text-slate-500">
-                  {result.anomalies_detected} of {result.total_records.toLocaleString()} trips flagged by the ML model
+                  {stats.anomaliesDetected} of {stats.totalRecords.toLocaleString()} rows flagged by the ML model
                 </p>
               </div>
               <div className="ml-auto">
                 <div className="w-32 h-2 bg-[#0f1f35] rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${result.anomaly_rate > 0.1 ? "bg-red-500" : "bg-emerald-500"}`}
-                    style={{ width: `${Math.min(result.anomaly_rate * 100, 100)}%` }}
+                    className={`h-full rounded-full ${stats.anomalyRate > 0.1 ? "bg-red-500" : "bg-emerald-500"}`}
+                    style={{ width: `${Math.min(result.summary.anomaly_rate_pct, 100)}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <SummaryCard label="Total Records" value={result.total_records.toLocaleString()} icon={FileText} sub="rows processed" />
-              <SummaryCard label="Anomalies Found" value={result.anomalies_detected} icon={AlertTriangle} variant="danger" sub="flagged trips" />
-              <SummaryCard label="Est. Financial Loss" value={`₦${(result.summary.estimated_loss_naira / 1000).toFixed(0)}k`} icon={TrendingDown} variant="warning" sub="from anomalies" />
-              <SummaryCard label="Route Deviations" value={result.summary.route_deviations} icon={Route} variant={result.summary.route_deviations > 0 ? "warning" : "success"} sub="off-route trips" />
+              <SummaryCard label="Total Records" value={stats.totalRecords.toLocaleString()} icon={FileText} sub="rows processed" />
+              <SummaryCard label="Anomalies Found" value={stats.anomaliesDetected} icon={AlertTriangle} variant="danger" sub="flagged rows" />
+              <SummaryCard label="Est. Financial Loss" value={`₦${(stats.estimatedLoss / 1000).toFixed(0)}k`} icon={TrendingDown} variant="warning" sub="from anomalies" />
+              <SummaryCard label="Route Deviations" value={stats.routeDeviations} icon={Route} variant={stats.routeDeviations > 0 ? "warning" : "success"} sub="off-route trips" />
             </div>
 
-            {/* Secondary stats */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: Fuel, color: "text-red-400 bg-red-500/10 border-red-500/20", label: "Fuel Theft Suspected", value: `${result.summary.fuel_theft_suspected} trips`, vColor: "text-red-400" },
-                { icon: Clock, color: "text-amber-400 bg-amber-500/10 border-amber-500/20", label: "Excessive Idle", value: `${result.summary.excessive_idle} trips`, vColor: "text-amber-400" },
-                { icon: CheckCircle, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", label: "Clean Trips", value: `${result.total_records - result.anomalies_detected}`, vColor: "text-emerald-400" },
+                { icon: Fuel, color: "text-red-400 bg-red-500/10 border-red-500/20", label: "Fuel Theft Suspected", value: `${stats.fuelTheft} trips`, vColor: "text-red-400" },
+                { icon: Clock, color: "text-amber-400 bg-amber-500/10 border-amber-500/20", label: "Excessive Idle", value: `${stats.excessiveIdle} trips`, vColor: "text-amber-400" },
+                { icon: CheckCircle, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", label: "Clean Trips", value: `${stats.totalRecords - stats.anomaliesDetected}`, vColor: "text-emerald-400" },
               ].map(({ icon: Icon, color, label, value, vColor }) => (
                 <div key={label} className="bg-[#0a1628] border border-[#1e3254] rounded-xl p-4 flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${color}`}>
@@ -369,8 +363,7 @@ export default function AnalyzePage() {
               ))}
             </div>
 
-            {/* AI Insight */}
-            {result.ai_insight && (
+            {stats.aiInsight && (
               <div className="bg-cyan-500/3 border border-cyan-900/40 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-cyan-900/30">
                   <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
@@ -379,23 +372,22 @@ export default function AnalyzePage() {
                   <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.15em]">AI Insight</span>
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400 pulse-dot" />
                 </div>
-                <p className="text-sm text-slate-400 leading-relaxed p-4">{result.ai_insight}</p>
+                <p className="text-sm text-slate-400 leading-relaxed p-4">{stats.aiInsight}</p>
               </div>
             )}
 
-            {/* Anomaly list */}
-            {result.top_anomalies?.length > 0 && (
+            {result.anomalies.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.15em]">
                     Top Anomalies
                   </p>
                   <div className="flex-1 h-px bg-[#1e3254]" />
-                  <span className="text-[10px] text-slate-600 font-data">{result.top_anomalies.length} shown</span>
+                  <span className="text-[10px] text-slate-600 font-data">{result.anomalies.length} shown</span>
                 </div>
                 <div className="space-y-2">
-                  {result.top_anomalies.map((row, i) => (
-                    <AnomalyRow key={i} row={row} idx={i} />
+                  {result.anomalies.map((row, i) => (
+                    <AnomalyRow key={`${row.vehicle_id}-${row.timestamp}-${i}`} row={row} idx={i} />
                   ))}
                 </div>
               </div>

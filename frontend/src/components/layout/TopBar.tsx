@@ -4,7 +4,7 @@ import { useFleet } from "@/lib/fleetStore";
 import Link from "next/link";
 
 export default function TopBar() {
-  const { stats, activeTab, setActiveTab, alerts } = useFleet();
+  const { stats, activeTab, setActiveTab, alerts, liveMode } = useFleet();
   const activeAlerts = alerts.filter((a) => !a.resolved).length;
 
   const tabs = [
@@ -38,9 +38,9 @@ export default function TopBar() {
         <div>
           <h1 className="text-sm font-bold text-white tracking-tight leading-none">FleetGuard</h1>
           <div className="flex items-center gap-1 mt-0.5">
-            <Radio size={8} style={{ color: "#34d399" }} className="pulse-dot" />
-            <span className="text-[10px] font-medium tracking-widest uppercase" style={{ color: "#34d399" }}>
-              Live
+            <Radio size={8} style={{ color: liveMode ? "#34d399" : "#94a3b8" }} className="pulse-dot" />
+            <span className="text-[10px] font-medium tracking-widest uppercase" style={{ color: liveMode ? "#34d399" : "#94a3b8" }}>
+              {liveMode ? "Live API" : "Demo"}
             </span>
           </div>
         </div>

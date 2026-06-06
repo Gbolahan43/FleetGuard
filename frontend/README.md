@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FleetGuard Frontend
 
-## Getting Started
+Next.js dashboard — **Live Monitor** (Path A) and **Analyze Logs** (Path B).
 
-First, run the development server:
+**Hosting:** AWS Amplify (`frontend/` app root).
 
-```bash
+## Routes
+
+| Route | Tab | API env var |
+| --- | --- | --- |
+| `/` or `/live` | Live Monitor | `NEXT_PUBLIC_API_URL` |
+| `/analyze` | Analyze Logs | `NEXT_PUBLIC_BATCH_API_URL` |
+
+When `NEXT_PUBLIC_API_URL` is unset, Live Monitor uses mock data for local dev.
+
+## Local dev
+
+```powershell
+cd frontend
+copy .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Path B (Analyze):** start the FastAPI backend on port 8080:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+cd backend
+uvicorn app.main:app --port 8080
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set in `.env.local`:
 
-## Learn More
+```env
+NEXT_PUBLIC_BATCH_API_URL=http://127.0.0.1:8080
+```
 
-To learn more about Next.js, take a look at the following resources:
+**Path A (Live):** set `NEXT_PUBLIC_API_URL` to your API Gateway URL after SAM deploy.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Alert AI drilldown:** `/api/analyze` calls Amazon Bedrock (server-side). Requires AWS credentials locally (`AWS_PROFILE` or default) and `bedrock:InvokeModel`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Amplify deploy
 
-## Deploy on Vercel
+1. Amplify Console → Host web app → connect GitHub repo `Gbolahan43/FleetGuard`.
+2. Monorepo app root: `frontend/`.
+3. Environment variables:
+   - `NEXT_PUBLIC_API_URL` — API Gateway base URL
+   - `NEXT_PUBLIC_BATCH_API_URL` — App Runner URL
+   - `AWS_REGION=us-west-2`
+   - `BEDROCK_MODEL_ID=us.anthropic.claude-opus-4-6-v1`
+4. Attach IAM role to Amplify SSR compute with `bedrock:InvokeModel`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Build spec: [`amplify.yml`](amplify.yml).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+```bash
+npm run dev      # local dev server
+npm run build    # production build
+npm run lint     # ESLint
+```

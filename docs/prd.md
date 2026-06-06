@@ -84,7 +84,7 @@ Detection is **unsupervised** (IsolationForest) — no labelled incidents requir
 
 | ID | Requirement |
 | --- | --- |
-| NFR-1 | Region: `us-east-1` (Bedrock model access) |
+| NFR-1 | Region: `us-west-2` (Bedrock model access) |
 | NFR-2 | Real-time scoring latency: &lt; 2 s per ping batch (excluding Bedrock) |
 | NFR-3 | Batch analysis: &lt; 30 s for ~5k rows (demo dataset) |
 | NFR-4 | Demo cost: &lt; ~$5 total (Free Tier where possible) |

@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
 
 jobs:
   deploy-path-a:
@@ -26,6 +26,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-fleetguard-${{ github.run_id }}
 
       - uses: aws-actions/setup-sam@v2
 
@@ -37,16 +38,20 @@ jobs:
             --stack-name fleetguard-path-a \
             --resolve-s3 \
             --capabilities CAPABILITY_IAM \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ env.AWS_REGION }} \
+            --parameter-overrides BedrockModelId="us.anthropic.claude-opus-4-6-v1"
 
-      - name: Upload model artifacts to S3
+      - name: Train and upload model artifacts to S3
         run: |
+          pip install scikit-learn==1.5.2 numpy==1.26.4 pandas boto3
+          python ml/scripts/train.py
           BUCKET=$(aws cloudformation describe-stacks \
             --stack-name fleetguard-path-a \
             --query "Stacks[0].Outputs[?OutputKey=='ModelBucketName'].OutputValue" \
-            --output text)
+            --output text \
+            --region ${{ env.AWS_REGION }})
           chmod +x infrastructure/scripts/upload_models.sh
-          ./infrastructure/scripts/upload_models.sh "$BUCKET"
+          ./infrastructure/scripts/upload_models.sh "$BUCKET" fleetguard-model ${{ env.AWS_REGION }}
 
   deploy-path-b:
     runs-on: ubuntu-latest
@@ -59,6 +64,12 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-fleetguard-${{ github.run_id }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names fleetguard-backend --region ${{ env.AWS_REGION }} \
+            || aws ecr create-repository --repository-name fleetguard-backend --region ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr

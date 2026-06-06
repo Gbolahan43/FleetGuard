@@ -95,7 +95,7 @@ Native, zero-setup logs/metrics.
 Not used for the demo, but the chosen ingestion path for fleet-scale telemetry: buffering,
 ordering, and throughput beyond direct POST.
 
-## 5. Indicative cost (us-east-1)
+## 5. Indicative cost (us-west-2)
 
 Demo scale sits within Free Tier. ~4,800 pings of scoring + a handful of Bedrock reports:
 Lambda ~$0, API ~$0, DynamoDB ~$0, S3 < $0.10, Bedrock a few cents. **Total < ~$1.**

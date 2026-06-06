@@ -7,8 +7,11 @@ version = 0.1
 stack_name = "fleetguard-path-a"
 resolve_s3 = true
 s3_prefix = "fleetguard-sam"
-region = "us-east-1"
+region = "us-west-2"
+profile = "fleetguard"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "BedrockModelId=\"anthropic.claude-3-5-sonnet-20241022-v2:0\""
+parameter_overrides = "BedrockModelId=\"us.anthropic.claude-opus-4-6-v1\""
+# Stack-level tags (propagate where supported); resource tags are in template.yaml
+tags = "event=oneWithAI team=E-Evo aws-apn-id=pc:8l8gcn23lmlgammd8572tk6va"
 image_repositories = []

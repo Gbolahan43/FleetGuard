@@ -9,10 +9,13 @@ import React, {
   useRef,
 } from "react";
 import type { Vehicle, Alert, FleetStats, GpsPoint } from "@/types/fleet";
+import { getApiUrl, getBatchApiUrl } from "@/lib/env";
+import {
+  buildVehiclesFromIncidents,
+  fetchIncidents,
+  mapIncidentToAlert,
+} from "@/lib/api/incidents";
 
-// ---------------------------------------------------------------------------
-// Types for the ML API response (matching actual backend)
-// ---------------------------------------------------------------------------
 interface MLScoredRecord {
   vehicle_id: string;
   timestamp: string;
@@ -47,9 +50,6 @@ interface MLSummary {
   breakdown?: Record<string, number>;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 const PLATE_PREFIXES = ["LND", "FST", "KJA", "ABJ", "PHC"];
 const DRIVER_NAMES = [
   "Emeka Okafor", "Tunde Adeyemi", "Chioma Nwosu",
@@ -116,10 +116,7 @@ function generateRouteHistory(
 }
 
 function getLatestRecords(records: MLScoredRecord[]): MLScoredRecord[] {
-  if (!records || !Array.isArray(records)) {
-    console.error("getLatestRecords: records is not an array", records);
-    return [];
-  }
+  if (!records || !Array.isArray(records)) return [];
   const latest: Map<string, MLScoredRecord> = new Map();
   records.forEach((r) => {
     const existing = latest.get(r.vehicle_id);
@@ -230,9 +227,6 @@ const DEFAULT_STATS: FleetStats = {
   avgFuelEfficiency: 0,
 };
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
 interface FleetContextType {
   vehicles: Vehicle[];
   alerts: Alert[];
@@ -242,16 +236,20 @@ interface FleetContextType {
   activeTab: "map" | "alerts" | "analytics";
   isLoading: boolean;
   error: string | null;
+  liveMode: boolean;
   setSelectedVehicle: (v: Vehicle | null) => void;
   setSelectedAlert: (a: Alert | null) => void;
   setActiveTab: (tab: "map" | "alerts" | "analytics") => void;
   resolveAlert: (alertId: string) => void;
 }
 
-
 const FleetContext = createContext<FleetContextType | null>(null);
+const POLL_MS = 15_000;
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
+  const apiUrl = getApiUrl();
+  const liveMode = Boolean(apiUrl);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [stats, setStats] = useState<FleetStats>(DEFAULT_STATS);
@@ -262,16 +260,49 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const hasFetched = useRef(false);
 
-  // ── 1. Fetch ML-scored fleet data ONCE on mount ──────────────────────
+  const refreshFromApi = useCallback(async () => {
+    if (!apiUrl) return;
+    try {
+      const incidents = await fetchIncidents(50);
+      if (incidents.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      const mappedAlerts = incidents.map(mapIncidentToAlert);
+      const apiVehicles = buildVehiclesFromIncidents(incidents);
+
+      setAlerts(mappedAlerts);
+      setVehicles(apiVehicles);
+      setStats((prev) => ({
+        ...prev,
+        totalVehicles: apiVehicles.length,
+        activeVehicles: apiVehicles.filter((v) => v.status !== "offline").length,
+        alertsToday: mappedAlerts.filter((a) => !a.resolved).length,
+      }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load incidents");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl]);
+
   useEffect(() => {
+    if (!liveMode) return;
+    refreshFromApi();
+    const interval = setInterval(refreshFromApi, POLL_MS);
+    return () => clearInterval(interval);
+  }, [liveMode, refreshFromApi]);
+
+  useEffect(() => {
+    if (liveMode) return;
     if (hasFetched.current) return;
     hasFetched.current = true;
 
     async function fetchAnalyzedFleet() {
       setIsLoading(true);
       setError(null);
-
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8080";
 
       try {
         const csvRes = await fetch("/fleetguard_telemetry.csv");
@@ -281,7 +312,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         const formData = new FormData();
         formData.append("file", new Blob([csvText], { type: "text/csv" }), "fleetguard_telemetry.csv");
 
-        const response = await fetch(`${BACKEND_URL}/api/v1/analyze-fleet`, {
+        const response = await fetch(`${getBatchApiUrl()}/api/v1/analyze-fleet`, {
           method: "POST",
           body: formData,
         });
@@ -292,61 +323,42 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await response.json();
-
-        // Safety check
-        if (!data || !data.rows || !Array.isArray(data.rows)) {
-          console.error("Unexpected API response shape:", data);
+        if (!data?.rows || !Array.isArray(data.rows)) {
           throw new Error("API response missing 'rows' array");
         }
 
-        // Get latest record per vehicle
         const latestRecords = getLatestRecords(data.rows);
-
         if (latestRecords.length === 0) {
           throw new Error("No vehicle records found in ML response");
         }
 
-        // Map to frontend types
         const mappedVehicles = latestRecords.map((r, i) => mapVehicle(r, i));
-
-        // Build vehicle lookup for alerts
         const vehicleMap = new Map<string, Vehicle>();
         mappedVehicles.forEach((v) => vehicleMap.set(v.id, v));
 
-        // Map anomalies
         const mappedAlerts = mapAlerts(data.anomalies ?? [], vehicleMap);
-        console.log("Mapped alerts:", mappedAlerts.length, mappedAlerts);
-        console.log("Anomaly types:", data.anomalies?.map((a: any) => a.anomaly_type));
-        
-        // Attach alerts to their vehicles
         mappedVehicles.forEach((v) => {
           v.alerts = mappedAlerts.filter((a) => a.vehicleId === v.id);
         });
-
-        // Set any vehicle with an unresolved alert to "alert" status
         mappedVehicles.forEach((v) => {
           if (v.alerts.some((a) => !a.resolved) && v.status !== "alert") {
             v.status = "alert";
           }
         });
 
-        const computedStats = computeStats(mappedVehicles, mappedAlerts, data.summary);
-
         setVehicles(mappedVehicles);
         setAlerts(mappedAlerts);
-        setStats(computedStats);
-        setIsLoading(false);
-      } catch (err: any) {
-        console.error("Failed to fetch analyzed fleet:", err);
-        setError(err.message ?? "Failed to load fleet data");
+        setStats(computeStats(mappedVehicles, mappedAlerts, data.summary));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load fleet data");
+      } finally {
         setIsLoading(false);
       }
     }
 
     fetchAnalyzedFleet();
-  }, []);
+  }, [liveMode]);
 
-  // ── 2. Live position simulation ──────────────────────────────────────
   useEffect(() => {
     if (vehicles.length === 0) return;
 
@@ -360,7 +372,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
             : 15 + Math.random() * 40;
 
           const direction = v.id.charCodeAt(v.id.length - 1) % 2 === 0 ? 1 : -1;
-
           const newLat = v.currentPosition.lat + (Math.random() - 0.5) * 0.0005;
           const newLng = v.currentPosition.lng + direction * 0.0003 + (Math.random() - 0.5) * 0.0002;
           const newFuel = Math.max(2, v.currentPosition.fuelLevel - (speed > 5 ? 0.04 : 0.01));
@@ -394,7 +405,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [vehicles.length]);
 
-  // ── 3. Resolve alert ─────────────────────────────────────────────────
   const resolveAlert = useCallback((alertId: string) => {
     setAlerts((prev) =>
       prev.map((a) => (a.id === alertId ? { ...a, resolved: true } : a))
@@ -416,6 +426,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         activeTab,
         isLoading,
         error,
+        liveMode,
         setSelectedVehicle,
         setSelectedAlert,
         setActiveTab,

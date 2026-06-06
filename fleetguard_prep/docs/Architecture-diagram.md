@@ -49,7 +49,7 @@ flowchart LR
 
 ## 2. Full AWS architecture (target deployment)
 
-Region: **`us-east-1`**. Backend IaC: **`infrastructure/`** (Terraform) · Frontend: **Amplify Console** (Git).
+Region: **`us-west-2`**. Path A IaC: **`infrastructure/sam/`** (AWS SAM) · Frontend: **Amplify Console** (Git).
 
 ```mermaid
 flowchart TB
@@ -64,7 +64,7 @@ flowchart TB
 
   subgraph pathA [Path A — Primary real-time]
     APIGW[Amazon API Gateway HTTP API]
-    LAM[AWS Lambda — ScoreFn container arm64]
+    LAM[AWS Lambda — ScoreFn container x86_64]
     ECR1[Amazon ECR — Lambda image]
   end
 
@@ -76,7 +76,7 @@ flowchart TB
   subgraph mlai [ML & AI]
     S3M[Amazon S3 — model artifacts]
     IF[IsolationForest + StandardScaler]
-    BR[Amazon Bedrock — Claude Haiku / Sonnet]
+    BR[Amazon Bedrock — Claude Opus 4.6]
   end
 
   subgraph data [Data stores]
@@ -140,7 +140,7 @@ flowchart TB
 | `ml/src/inference/` | Loaded by Lambda + App Runner | Shared `inference_core.py` |
 | `ml/models/` | **S3** `fleetguard-model/` | `.pkl`, `feature_cols.json` |
 | `backend/` | **App Runner** (FastAPI) | `POST /api/v1/analyze-fleet`, `GET /healthz` |
-| `infrastructure/` | **Terraform** | Lambda, App Runner, DynamoDB, S3 model bucket |
+| `infrastructure/sam/` | **AWS SAM** | Lambda, API Gateway, DynamoDB, S3 model bucket |
 | `.github/workflows/` | **GitHub Actions → OIDC** | Backend/infra deploy |
 | `frontend/amplify.yml` | **Amplify build spec** | `npm ci && npm run build` |
 
@@ -174,7 +174,7 @@ Legacy reference code remains in `fleetguard_prep/`; active development uses `ml
 | 1 | Operator uploads CSV via dropzone | Amplify app → App Runner |
 | 2 | Parse CSV, `fuel_delta` via pandas groupby | App Runner |
 | 3 | Same IsolationForest via `inference_core` | App Runner + S3 model |
-| 4 | Top-N anomalies → Bedrock insights | Amazon Bedrock (Haiku) |
+| 4 | Top-N anomalies → Bedrock insights | Amazon Bedrock (Opus 4.6) |
 | 5 | Return summary + rows + anomalies JSON | App Runner |
 | 6 | Optional persist (`source: batch`) | DynamoDB |
 
@@ -203,15 +203,16 @@ off_hours_speed, idle_speed_ratio, zone_breach.
 
 | Tab | Route | Calls | UI |
 | --- | --- | --- | --- |
-| **Live Monitor** | `/live` | `NEXT_PUBLIC_API_URL` → `/incidents` | Map, incident log, AI report |
-| **Analyze Logs** | `/analyze` | `NEXT_PUBLIC_BATCH_API_URL` → `/analyze-fleet` | Dropzone, table, scatter, AI cards |
+| **Live Monitor** | `/live` | `NEXT_PUBLIC_API_URL` → `/incidents` | Map, incident log, AI drilldown via `/api/analyze` |
+| **Analyze Logs** | `/analyze` | `NEXT_PUBLIC_BATCH_API_URL` → `/api/v1/analyze-fleet` | Dropzone, summary cards, top anomalies + Bedrock reports |
 
 ### Amplify setup
 
 1. Connect GitHub repo; set app root to **`frontend/`**.
 2. Build uses **`frontend/amplify.yml`** (`npm ci && npm run build`).
-3. Set env vars in Amplify Console (same as `.env.local` locally).
-4. HTTPS at `https://main.<app-id>.amplifyapp.com` (or custom domain).
+3. Set env vars in Amplify Console: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BATCH_API_URL`, `AWS_REGION`, `BEDROCK_MODEL_ID`.
+4. Attach IAM role with `bedrock:InvokeModel` for SSR `/api/analyze` route.
+5. HTTPS at `https://main.<app-id>.amplifyapp.com` (or custom domain).
 
 ---
 
@@ -226,7 +227,7 @@ off_hours_speed, idle_speed_ratio, zone_breach.
 | **ECR** | Container images for Lambda + App Runner |
 | **S3** | Model artifacts only (`fleetguard-model/`) |
 | **DynamoDB** | Incidents table + vehicle-state table |
-| **Bedrock** | Claude Haiku/Sonnet incident narratives |
+| **Bedrock** | Claude Opus 4.6 incident narratives |
 | **CloudWatch** | Logs and metrics |
 | **EventBridge** | Optional warm ping for Lambda cold starts |
 | **GitHub Actions (OIDC)** | Backend + infra CI/CD (not frontend) |
@@ -268,8 +269,9 @@ flowchart LR
     PR[Pull request] --> CI[Lint + pytest parity]
     MAIN[Merge to main] --> BUILD[Build Docker images]
     BUILD --> ECR[Push to ECR]
-    ECR --> TF[Terraform apply]
-    TF --> AWS[Lambda + App Runner + S3 + DynamoDB]
+    ECR --> SAM[SAM deploy Path A]
+    SAM --> AWS[Lambda + API GW + S3 + DynamoDB]
+    ECR --> AR[App Runner Path B]
   end
 ```
 

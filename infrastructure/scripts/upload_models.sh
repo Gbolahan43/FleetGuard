@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Upload ML artifacts to S3 for Lambda / App Runner.
-# Usage: ./upload_models.sh fleetguard-models-YOURACCOUNT [fleetguard-model] [us-east-1]
+# Usage: ./upload_models.sh fleetguard-models-YOURACCOUNT [fleetguard-model] [us-west-2]
 
 set -euo pipefail
 
 BUCKET="${1:?Usage: $0 <bucket> [prefix] [region]}"
 PREFIX="${2:-fleetguard-model}"
-REGION="${3:-us-east-1}"
+REGION="${3:-us-west-2}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"

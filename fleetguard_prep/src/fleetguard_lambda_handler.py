@@ -26,10 +26,8 @@ import numpy as np
 TABLE_NAME = os.environ.get("DYNAMO_TABLE", "fleetguard-incidents")
 BUCKET_NAME = os.environ.get("MODEL_BUCKET", "your-hackathon-bucket")
 MODEL_PREFIX = os.environ.get("MODEL_PREFIX", "fleetguard-model")
-BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
-BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0"
-)
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-west-2")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-6-v1")
 
 # Artifact object names in S3 (under MODEL_PREFIX/).
 MODEL_KEY = "fleetguard_anomaly_model.pkl"

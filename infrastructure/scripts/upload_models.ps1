@@ -1,14 +1,16 @@
 # Upload ML artifacts to S3 for Lambda / App Runner.
-# Usage: .\upload_models.ps1 -Bucket fleetguard-models-YOURACCOUNT -Region us-east-1
+# Usage: .\upload_models.ps1 -Bucket fleetguard-models-YOURACCOUNT -Region us-west-2
 
 param(
     [Parameter(Mandatory = $true)]
     [string]$Bucket,
     [string]$Prefix = "fleetguard-model",
-    [string]$Region = "us-east-1"
+    [string]$Region = "us-west-2",
+    [string]$Profile = ""
 )
 
 $ErrorActionPreference = "Stop"
+if ($Profile) { $env:AWS_PROFILE = $Profile }
 $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $ModelsDir = Join-Path $RepoRoot "ml\models"
 

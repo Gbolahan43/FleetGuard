@@ -1,5 +1,5 @@
 # Smoke test Path A after SAM deploy
-# Usage: .\smoke_path_a.ps1 -ApiUrl https://xxx.execute-api.us-east-1.amazonaws.com
+# Usage: .\smoke_path_a.ps1 -ApiUrl https://xxx.execute-api.us-west-2.amazonaws.com
 
 param(
     [Parameter(Mandatory = $true)]

@@ -1,42 +1,78 @@
 # FleetGuard AWS bootstrap checklist
 
-Complete before `sam deploy`. Region: **us-east-1**.
+Complete before `sam deploy`. Region: **us-west-2**.
+
+## 0. AWS account (default — full permissions)
+
+FleetGuard deploy uses your **default** AWS CLI credentials (not the limited `fleetguard` profile).
+
+```cmd
+cd C:\Users\Excellus\Documents\FleetGuard
+call infrastructure\scripts\use-default-aws.cmd
+```
+
+Set region once if needed:
+
+```cmd
+aws configure set region us-west-2
+```
+
+## 0b. GitHub OIDC (one-time, same default account)
+
+```cmd
+infrastructure\scripts\deploy-github-oidc.cmd
+```
+
+Then GitHub secret `AWS_DEPLOY_ROLE_ARN` + variable `ENABLE_AWS_DEPLOY=true`.  
+Details: [../iam/README.md](../iam/README.md)
+
+## 0c. Legacy limited profile (optional)
+
+The `fleetguard` profile was a separate limited account — **skip for deploy** unless explicitly required:
+
+```cmd
+call infrastructure\scripts\use-fleetguard-aws.cmd
+```
+
+Optional PowerShell helper (legacy limited profile only):
+
+```powershell
+function Use-FleetGuardAws {
+  $env:AWS_PROFILE = "fleetguard"
+  $env:AWS_DEFAULT_REGION = "us-west-2"
+}
+```
 
 ## 1. AWS CLI
 
-```powershell
-aws sts get-caller-identity
-aws configure get region   # should be us-east-1
+```cmd
+call infrastructure\scripts\use-default-aws.cmd
+aws configure get region
 ```
 
 ## 2. Amazon Bedrock model access
 
-Console → **Amazon Bedrock** → **Model access** → enable:
-
-| Model | Path | Purpose |
-| --- | --- | --- |
-| Claude 3.5 Sonnet | Path A Lambda | Live incident reports |
-| Claude 3 Haiku | Path B App Runner | Batch top-N insights |
+Console → **Amazon Bedrock** → **Model access** → enable **Claude Opus 4.6** (inference profile `us.anthropic.claude-opus-4-6-v1`).
 
 ## 3. Deploy Path A (SAM)
 
-```powershell
-cd infrastructure/sam
+```cmd
+call infrastructure\scripts\use-default-aws.cmd
+cd infrastructure\sam
 sam build
 sam deploy --guided
-# Note outputs: ApiUrl, ModelBucketName
 
-cd ../..
-.\infrastructure\scripts\upload_models.ps1 -Bucket <ModelBucketName from output>
+cd ..\..
+powershell -File infrastructure\scripts\upload_models.ps1 -Bucket MODEL_BUCKET_FROM_OUTPUT
 ```
 
 ## 4. Smoke test Path A
 
-```powershell
-$API = "https://YOUR_API.execute-api.us-east-1.amazonaws.com"
-curl "$API/incidents?limit=5"
-python ml/scripts/replay.py --api $API --mode seed
-python ml/scripts/replay.py --api $API --mode replay --limit 100
+```cmd
+set API=https://YOUR_API.execute-api.us-west-2.amazonaws.com
+curl %API%/incidents?limit=5
+python ml\scripts\replay.py --api %API% --mode seed
+python ml\scripts\replay.py --api %API% --mode replay --limit 100
 ```
 
 ## 5. Deploy Path B (App Runner)

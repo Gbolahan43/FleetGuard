@@ -9,9 +9,9 @@ from app.core.ml_path import DEFAULT_MODEL_DIR, REPO_ROOT
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    aws_region: str = "us-east-1"
+    aws_region: str = "us-west-2"
     model_path: Path = DEFAULT_MODEL_DIR
-    bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"
+    bedrock_model_id: str = "us.anthropic.claude-opus-4-6-v1"
     bedrock_enabled: bool = False
     persist_incidents: bool = False
     top_n_anomalies: int = 10

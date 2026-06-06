@@ -30,4 +30,4 @@ infrastructure/
 
 **Frontend:** AWS Amplify (Git → `frontend/`). See [../frontend/README.md](../frontend/README.md).
 
-Region default: `us-east-1`.
+Region default: `us-west-2`.

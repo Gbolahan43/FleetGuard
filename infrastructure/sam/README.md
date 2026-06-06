@@ -3,8 +3,19 @@
 ## Prerequisites
 
 - AWS CLI, SAM CLI, Docker (for container build)
-- Bedrock model access enabled in `us-east-1` (see [../scripts/bootstrap_checklist.md](../scripts/bootstrap_checklist.md))
+- Bedrock model access enabled in `us-west-2` (see [../scripts/bootstrap_checklist.md](../scripts/bootstrap_checklist.md))
 - Model artifacts trained with `scikit-learn==1.5.2` (matches Lambda container)
+
+## Resource tags (hackathon / APN)
+
+Applied in `template.yaml`:
+
+| Resource | `aws-apn-id` | `event` | `team` |
+| --- | --- | --- | --- |
+| S3, DynamoDB, API Gateway, EventBridge | `pc:8l8gcn23lmlgammd8572tk6va` | `oneWithAI` | `E-Evo` |
+| **ScoreFunction** (Bedrock / Gen AI) | `pc:a8xnp70u5w0s41039u52e6iuj` | `oneWithAI` | `E-Evo` |
+
+Path B (App Runner): apply the same tags in the App Runner service console or IaC when you create that service. Use the **Gen AI** `aws-apn-id` on the App Runner service (it calls Bedrock).
 
 ## Deploy
 
@@ -39,7 +50,7 @@ sam local invoke ScoreFunction -e infrastructure/sam/events/score.json
 ## Smoke test (deployed)
 
 ```powershell
-$API = "https://YOUR_ID.execute-api.us-east-1.amazonaws.com"
+$API = "https://YOUR_ID.execute-api.us-west-2.amazonaws.com"
 curl "$API/incidents?limit=5"
 python ml/scripts/replay.py --api $API --mode seed
 python ml/scripts/replay.py --api $API --mode replay --limit 100

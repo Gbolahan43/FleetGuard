@@ -8,8 +8,8 @@ this document.** TypeScript types in `frontend/src/types/fleet.ts` and Pydantic 
 
 | Path | Env var | Example |
 | --- | --- | --- |
-| A — Real-time | `NEXT_PUBLIC_API_URL` | `https://abc123.execute-api.us-east-1.amazonaws.com` |
-| B — Batch | `NEXT_PUBLIC_BATCH_API_URL` | `https://xyz.us-east-1.awsapprunner.com` |
+| A — Real-time | `NEXT_PUBLIC_API_URL` | `https://abc123.execute-api.us-west-2.amazonaws.com` |
+| B — Batch | `NEXT_PUBLIC_BATCH_API_URL` | `https://xyz.us-west-2.awsapprunner.com` |
 
 **Common:** JSON responses use `Content-Type: application/json`. CORS: `Access-Control-Allow-Origin: *` (demo).
 

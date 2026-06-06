@@ -1,74 +1,96 @@
-flowchart TB
+%% FleetGuard hybrid architecture — region us-west-2
+%% Regenerate: npx @mermaid-js/mermaid-cli -i architecture-diagram.mmd -o architecture-diagram.png -b white -w 2800
+
+flowchart LR
   subgraph USERS["Users & Data Sources"]
+    direction TB
     MGR["Fleet Manager"]
     ANALYST["Operations Analyst"]
     GPS["Telematics / GPS"]
-    REPLAY["CSV Replayer ml/scripts/replay.py"]
+    REPLAY["CSV Replayer"]
   end
 
-  subgraph FRONTEND["Frontend — AWS Amplify Hosting"]
-    GH["GitHub repo — frontend/"]
-    AMP["AWS Amplify — Next.js build & deploy"]
-    LIVE["Live Monitor Tab"]
-    BATCH["Analyze Logs Tab"]
+  subgraph FRONTEND["Frontend — AWS Amplify · us-west-2"]
+    direction TB
+    GH["GitHub Gbolahan43/FleetGuard"]
+    AMP["Amplify CI/CD — frontend/"]
+    DASH["Next.js Dashboard"]
+    LIVE["Live Monitor /live"]
+    BATCH["Analyze Logs /analyze"]
+    ALERTAI["SSR /api/analyze"]
   end
 
-  subgraph PATHA["Path A — Primary Real-Time"]
-    APIGW["API Gateway HTTP API"]
-    LAMBDA["Lambda ScoreFn — Container arm64"]
+  subgraph PATHA["Path A — Real-Time"]
+    direction TB
+    APIGW["API Gateway"]
+    LAMBDA["Lambda ScoreFn x86_64"]
     VSTATE[("DynamoDB vehicle-state")]
   end
 
-  subgraph PATHB["Path B — Secondary Batch"]
-    APPRUNNER["App Runner — FastAPI backend/"]
+  subgraph PATHB["Path B — Batch"]
+    direction TB
+    APPRUNNER["App Runner FastAPI"]
   end
 
   subgraph MLAI["Shared ML & AI"]
-    S3MODEL["S3 Model Bucket — IsolationForest + Scaler"]
-    INFER["inference_core.py — 12 features"]
-    BEDROCK["Amazon Bedrock — Claude Haiku / Sonnet"]
+    direction TB
+    S3MODEL["S3 model artifacts"]
+    INFER["inference_core.py"]
+    BEDROCK["Bedrock Claude Opus 4.6"]
   end
 
   subgraph DATA["Persistence"]
-    INCIDENTS[("DynamoDB fleetguard-incidents")]
+    direction TB
+    INCIDENTS[("DynamoDB incidents")]
   end
 
   subgraph OPS["Ops & CI/CD"]
-    CW["CloudWatch Logs"]
-    EB["EventBridge Warm Ping"]
-    GHA["GitHub Actions OIDC — backend & infra"]
-    ECR["Amazon ECR"]
+    direction TB
+    OIDC["GitHub Actions OIDC"]
+    SAM["SAM fleetguard-path-a"]
+    ECR["ECR fleetguard-backend"]
+    CW["CloudWatch"]
+    EB["EventBridge warm ping"]
   end
 
-  MGR --> AMP
-  ANALYST --> AMP
-  GH -->|"push main"| AMP
-  AMP --> LIVE
-  AMP --> BATCH
+  MGR --> DASH
+  ANALYST --> DASH
+  GH --> AMP --> DASH
+  DASH --> LIVE
+  DASH --> BATCH
+  LIVE --> ALERTAI
 
-  GPS -->|"POST /score"| APIGW
-  REPLAY -->|"POST /score"| APIGW
+  GPS --> APIGW
+  REPLAY --> APIGW
   LIVE -->|"GET /incidents"| APIGW
-  BATCH -->|"POST /api/v1/analyze-fleet"| APPRUNNER
+  BATCH -->|"POST analyze-fleet"| APPRUNNER
+  ALERTAI --> BEDROCK
 
   APIGW --> LAMBDA
   LAMBDA --> VSTATE
   LAMBDA --> S3MODEL
   APPRUNNER --> S3MODEL
-
-  LAMBDA --> INFER
-  APPRUNNER --> INFER
-
-  LAMBDA -->|"anomaly"| BEDROCK
-  APPRUNNER -->|"top-N anomalies"| BEDROCK
-
-  LAMBDA -->|"source: realtime"| INCIDENTS
-  APPRUNNER -.->|"optional source: batch"| INCIDENTS
+  LAMBDA -.-> INFER
+  APPRUNNER -.-> INFER
+  LAMBDA --> BEDROCK
+  APPRUNNER --> BEDROCK
+  LAMBDA --> INCIDENTS
+  APPRUNNER -.-> INCIDENTS
 
   LAMBDA --> CW
   APPRUNNER --> CW
   EB --> LAMBDA
+  OIDC --> SAM --> LAMBDA
+  OIDC --> ECR --> APPRUNNER
 
-  GHA --> ECR
-  ECR --> LAMBDA
-  ECR --> APPRUNNER
+  classDef pathA fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef pathB fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef frontend fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+  classDef ml fill:#f3e8ff,stroke:#9333ea,color:#581c87
+  classDef ops fill:#f1f5f9,stroke:#64748b,color:#334155
+
+  class APIGW,LAMBDA,VSTATE pathA
+  class APPRUNNER pathB
+  class GH,AMP,DASH,LIVE,BATCH,ALERTAI frontend
+  class S3MODEL,INFER,BEDROCK ml
+  class CW,EB,OIDC,SAM,ECR ops

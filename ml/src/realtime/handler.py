@@ -15,6 +15,7 @@ from typing import Any
 
 import boto3
 
+from inference.bedrock_models import BEDROCK_MODEL_ID as DEFAULT_BEDROCK_MODEL_ID
 from inference.constants import FEATURES_KEY, MODEL_KEY, SCALER_KEY
 from inference.inference_core import load_artifacts, score_ping
 
@@ -22,10 +23,8 @@ TABLE_NAME = os.environ.get("DYNAMO_TABLE", "fleetguard-incidents")
 STATE_TABLE = os.environ.get("STATE_TABLE", "fleetguard-vehicle-state")
 BUCKET_NAME = os.environ.get("MODEL_BUCKET", "your-hackathon-bucket")
 MODEL_PREFIX = os.environ.get("MODEL_PREFIX", "fleetguard-model")
-BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
-BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0"
-)
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-west-2")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
 
 dynamodb = boto3.resource("dynamodb")
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)

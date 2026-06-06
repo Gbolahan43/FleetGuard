@@ -23,11 +23,21 @@ Until those are configured, commits will not attempt AWS deploy.
 
 ### When you are ready to deploy
 
-1. Configure IAM OIDC + deploy role (see [../fleetguard_prep/docs/technicals.md](../fleetguard_prep/docs/technicals.md) §8).
-2. Add secret `AWS_DEPLOY_ROLE_ARN`.
-3. Add variable `ENABLE_AWS_DEPLOY` = `true`.
-4. Run **AWS Deploy** manually from the Actions tab and verify smoke tests.
-5. Optional: uncomment `push: branches: [main]` in `aws-deploy.yml` for auto-deploy on merge.
+Use your **default AWS account** (full permissions). From **cmd** at repo root:
+
+```cmd
+call infrastructure\scripts\use-default-aws.cmd
+infrastructure\scripts\deploy-github-oidc.cmd
+```
+
+Then GitHub → **Gbolahan43/fleetguard** → Settings:
+
+- Secret: `AWS_DEPLOY_ROLE_ARN` = role ARN from script output  
+- Variable: `ENABLE_AWS_DEPLOY` = `true`
+
+Run **Actions → AWS Deploy → Run workflow**.
+
+Full steps: [../infrastructure/iam/README.md](../infrastructure/iam/README.md)
 
 ## Local equivalents
 

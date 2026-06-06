@@ -19,9 +19,9 @@ Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](p
 | D-3 | Shared ML | **Same model artifacts + identical feature engineering** | Scores must match across both paths |
 | D-4 | `GET /incidents` | **Required** (Path A) | Live Monitor tab reads from DynamoDB |
 | D-5 | Batch persistence | **Optional** (`source: "batch"`) | Batch returns JSON immediately; optional write to unified incident table |
-| D-6 | AWS region | **`us-east-1`** | Bedrock Claude availability |
-| D-7 | Bedrock — real-time | **Claude 3.5 Sonnet** per anomaly | Already wired in Lambda handler |
-| D-8 | Bedrock — batch | **Claude 3 Haiku** top-N; Sonnet for summary | Cost/speed for bulk rows |
+| D-6 | AWS region | **`us-west-2`** | Bedrock Claude availability |
+| D-7 | Bedrock — real-time | **Claude Opus 4.6** (`us.anthropic.claude-opus-4-6-v1`) | Inference profile; live incident reports |
+| D-8 | Bedrock — batch | **Claude Opus 4.6** (same profile) | Top-N insights via shared model id |
 | D-9 | Real-time `fuel_delta` | **Server-side via `vehicle-state` DynamoDB** | Removes fragile caller contract |
 | D-10 | Batch `fuel_delta` | **Server-side via pandas `groupby().diff()`** | Natural fit for uploaded CSV |
 | D-11 | Lambda packaging | **Container image (ECR), `arm64`** | sklearn exceeds zip limit |
@@ -100,8 +100,8 @@ Existing `fleetguard_lambda_handler.py` implements `POST /score`. Add:
 | `MODEL_PREFIX` | `fleetguard-model` | Key prefix |
 | `DYNAMO_TABLE` | `fleetguard-incidents` | Incident table |
 | `STATE_TABLE` | `fleetguard-vehicle-state` | Last ping per vehicle |
-| `BEDROCK_REGION` | `us-east-1` | |
-| `BEDROCK_MODEL_ID` | `anthropic.claude-3-5-sonnet-20241022-v2:0` | |
+| `BEDROCK_REGION` | `us-west-2` | |
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-opus-4-6-v1` | Claude Opus 4.6 inference profile |
 
 ### 2.4 API surface (API Gateway HTTP API)
 
@@ -307,8 +307,8 @@ CORS on API Gateway and App Runner must allow the Amplify domain.
 ### 7.4 Env vars (Amplify + local `.env.local`)
 
 ```env
-NEXT_PUBLIC_API_URL=https://xxxx.execute-api.us-east-1.amazonaws.com
-NEXT_PUBLIC_BATCH_API_URL=https://xxxx.us-east-1.awsapprunner.com
+NEXT_PUBLIC_API_URL=https://xxxx.execute-api.us-west-2.amazonaws.com
+NEXT_PUBLIC_BATCH_API_URL=https://xxxx.us-west-2.awsapprunner.com
 ```
 
 ### 7.5 Types

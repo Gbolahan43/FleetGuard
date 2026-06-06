@@ -4,7 +4,7 @@
 vehicle use, and excessive idling in real time, with human-readable incident reports powered by
 Amazon Bedrock.
 
-**Region:** `us-east-1` · **Hackathon submission:** [SOW.md](SOW.md)
+**Region:** `us-west-2` · **Hackathon submission:** [SOW.md](SOW.md)
 
 ---
 
@@ -51,7 +51,7 @@ FleetGuard is a **hybrid command center** with two modes sharing one ML model:
 
 ![FleetGuard architecture](architecture-diagram.png)
 
-Full diagram and flows: [Architecture-diagram.md](Architecture-diagram.md)
+Full diagram and flows: [Architecture-diagram.md](fleetguard_prep/docs/Architecture-diagram.md)
 
 ```
 Next.js dashboard (AWS Amplify)
@@ -75,7 +75,7 @@ Scores are parity-tested so live and batch results stay consistent.
 | **App Runner** | Path B — FastAPI CSV batch analysis | Always-warm container; handles large multipart uploads |
 | **S3** | Model artifacts (IsolationForest + scaler) | Decouple retrain from redeploy |
 | **DynamoDB** | Incidents + per-vehicle state (`fuel_delta`) | Fast writes; no SQL ops for demo scale |
-| **Amazon Bedrock** | Incident report text (Claude Sonnet / Haiku) | Managed GenAI in-region; no GPU infra |
+| **Amazon Bedrock** | Incident report text (Claude Opus 4.6) | Managed GenAI in-region; no GPU infra |
 | **AWS Amplify** | Next.js dashboard (Git deploy, HTTPS) | Fastest AWS-native frontend CI |
 | **CloudWatch** | Logs and metrics | Zero-config observability |
 | **EventBridge** | Lambda warm ping (demo) | Reduces cold-start risk during judging |
@@ -149,7 +149,7 @@ Deploy to AWS: [infrastructure/scripts/bootstrap_checklist.md](infrastructure/sc
 | Document | Contents |
 | --- | --- |
 | **[SOW.md](SOW.md)** | Executive summary, business case, AWS justifications, phases, risks, success criteria |
-| **[Architecture-diagram.md](Architecture-diagram.md)** | Architecture narrative + Mermaid diagrams |
+| **[Architecture-diagram.md](fleetguard_prep/docs/Architecture-diagram.md)** | Architecture narrative + Mermaid diagrams |
 | **[docs/prd.md](docs/prd.md)** | Product requirements |
 | **[docs/api_contract.md](docs/api_contract.md)** | HTTP request/response shapes (both paths) |
 | **[docs/data_schema.md](docs/data_schema.md)** | CSV columns, features, DynamoDB schema |

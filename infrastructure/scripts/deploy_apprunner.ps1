@@ -1,10 +1,10 @@
 # Build, tag, and push backend image to ECR for App Runner.
-# Usage: .\deploy_apprunner.ps1 -RepositoryName fleetguard-backend [-Region us-east-1]
+# Usage: .\deploy_apprunner.ps1 -RepositoryName fleetguard-backend [-Region us-west-2]
 
 param(
     [Parameter(Mandatory = $true)]
     [string]$RepositoryName,
-    [string]$Region = "us-east-1",
+    [string]$Region = "us-west-2",
     [string]$Tag = "latest"
 )
 

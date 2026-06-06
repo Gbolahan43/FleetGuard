@@ -2,11 +2,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: FleetGuard Path A — real-time scoring (Lambda + API Gateway + DynamoDB)
 
+# Hackathon / APN tags — applied per resource below.
+# Standard (all resources): aws-apn-id pc:8l8gcn23lmlgammd8572tk6va, event oneWithAI, team E-Evo
+# Gen AI (Bedrock Lambda):  aws-apn-id pc:a8xnp70u5w0s41039u52e6iuj, event oneWithAI, team E-Evo
+
 Parameters:
   BedrockModelId:
     Type: String
-    Default: anthropic.claude-3-5-sonnet-20241022-v2:0
-    Description: Bedrock model for live incident reports
+    Default: us.anthropic.claude-opus-4-6-v1
+    Description: Bedrock inference profile for Claude Opus 4.6 incident reports
 
 Globals:
   Function:
@@ -26,6 +30,13 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
 
   IncidentsTable:
     Type: AWS::DynamoDB::Table
@@ -46,6 +57,13 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
 
   VehicleStateTable:
     Type: AWS::DynamoDB::Table
@@ -57,6 +75,13 @@ Resources:
       KeySchema:
         - AttributeName: vehicle_id
           KeyType: HASH
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
 
   HttpApi:
     Type: AWS::Serverless::HttpApi
@@ -71,13 +96,22 @@ Resources:
           - OPTIONS
         AllowHeaders:
           - "*"
+      Tags:
+        aws-apn-id: pc:8l8gcn23lmlgammd8572tk6va
+        event: oneWithAI
+        team: E-Evo
 
   ScoreFunction:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
       Architectures:
-        - arm64
+        - x86_64
+      # Gen AI service — invokes Amazon Bedrock for incident reports
+      Tags:
+        aws-apn-id: pc:a8xnp70u5w0s41039u52e6iuj
+        event: oneWithAI
+        team: E-Evo
       Environment:
         Variables:
           MODEL_BUCKET: !Ref ModelBucket
@@ -121,6 +155,13 @@ Resources:
       Description: Keep Lambda warm during demo windows
       ScheduleExpression: rate(5 minutes)
       State: ENABLED
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:8l8gcn23lmlgammd8572tk6va
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
       Targets:
         - Id: ScoreFunctionWarmTarget
           Arn: !GetAtt ScoreFunction.Arn

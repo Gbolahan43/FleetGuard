@@ -1,7 +1,7 @@
 # FleetGuard — Statement of Work (SOW)
 
 **Project:** FleetGuard — AI-powered fleet anomaly detection for Nigerian logistics  
-**Region:** `us-east-1`  
+**Region:** `us-west-2`  
 **Version:** 1.0 (hackathon submission)  
 **Related docs:** [Architecture diagram](Architecture-diagram.md) · [PRD](docs/prd.md) · [Technical spec](fleetguard_prep/docs/technicals.md)
 
@@ -113,7 +113,7 @@ FleetGuard/
 
 ### 3.4 Why AWS-native
 
-All components run in **us-east-1** with managed services: no GPU servers to operate, no
+All components run in **us-west-2** with managed services: no GPU servers to operate, no
 third-party LLM egress, and a clear story for judges on service selection and cost control.
 
 ---
@@ -246,7 +246,7 @@ flowchart TB
 
 | ID | Requirement | Target |
 | --- | --- | --- |
-| NFR-1 | Region | `us-east-1` |
+| NFR-1 | Region | `us-west-2` |
 | NFR-2 | Real-time scoring latency | &lt; 2 s per batch (excl. Bedrock) |
 | NFR-3 | Batch analysis | &lt; 30 s for ~4,800 rows |
 | NFR-4 | Demo cost | &lt; ~$5 total |
@@ -640,7 +640,7 @@ The project is accepted when:
 
 | Item | Assumption |
 | --- | --- |
-| AWS account | Bedrock model access enabled in `us-east-1` |
+| AWS account | Bedrock model access enabled in `us-west-2` |
 | Data | Demo uses mock Lagos telemetry; production requires real telematics integration |
 | Auth | No login for hackathon; production adds Amazon Cognito |
 | Team | 3–4 engineers can parallelize Path A, B, frontend, and infra |

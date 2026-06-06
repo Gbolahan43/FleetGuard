@@ -1,5 +1,11 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load backend/.env into os.environ so boto3 sees AWS_* vars (if set).
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from app.api.v1_router import router as v1_router
 from app.core.config import get_settings
