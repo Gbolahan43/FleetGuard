@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: FleetGuard Path B — App Runner service for FastAPI batch API
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR image URI (e.g. 123456789.dkr.ecr.us-west-2.amazonaws.com/fleetguard-backend:latest)
+  ServiceName:
+    Type: String
+    Default: fleetguard-backend
+  EcrRepositoryName:
+    Type: String
+    Default: fleetguard-backend
+
+Resources:
+  AppRunnerEcrAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-ecr-access"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:a8xnp70u5w0s41039u52e6iuj
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
+
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-instance"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockInvoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: "*"
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:a8xnp70u5w0s41039u52e6iuj
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
+
+  AppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      Tags:
+        - Key: aws-apn-id
+          Value: pc:a8xnp70u5w0s41039u52e6iuj
+        - Key: event
+          Value: oneWithAI
+        - Key: team
+          Value: E-Evo
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt AppRunnerEcrAccessRole.Arn
+        AutoDeploymentsEnabled: false
+        ImageRepository:
+          ImageIdentifier: !Ref ImageUri
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: "8080"
+            RuntimeEnvironmentVariables:
+              - Name: AWS_REGION
+                Value: !Ref AWS::Region
+              - Name: BEDROCK_ENABLED
+                Value: "true"
+              - Name: BEDROCK_MODEL_ID
+                Value: us.anthropic.claude-opus-4-6-v1
+              - Name: CORS_ORIGINS
+                Value: "*"
+              - Name: TOP_N_ANOMALIES
+                Value: "10"
+              - Name: MODEL_PATH
+                Value: /app/models
+              - Name: PERSIST_INCIDENTS
+                Value: "false"
+      InstanceConfiguration:
+        Cpu: "1024"
+        Memory: "2048"
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /healthz
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 5
+
+Outputs:
+  ServiceUrl:
+    Description: App Runner service URL (NEXT_PUBLIC_BATCH_API_URL)
+    Value: !Sub "https://${AppRunnerService.ServiceUrl}"
+  ServiceArn:
+    Description: App Runner service ARN
+    Value: !GetAtt AppRunnerService.ServiceArn
+  ServiceId:
+    Description: App Runner service ID
+    Value: !GetAtt AppRunnerService.ServiceId

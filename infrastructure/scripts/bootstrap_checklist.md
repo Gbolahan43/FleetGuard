@@ -54,7 +54,17 @@ aws configure get region
 
 Console → **Amazon Bedrock** → **Model access** → enable **Claude Opus 4.6** (inference profile `us.anthropic.claude-opus-4-6-v1`).
 
-## 3. Deploy Path A (SAM)
+## 3. Deploy Path B (App Runner) — first
+
+```cmd
+call infrastructure\scripts\use-default-aws.cmd
+infrastructure\scripts\deploy_apprunner_service.cmd
+powershell -File infrastructure\scripts\smoke_path_b.ps1 -BaseUrl https://YOUR_SERVICE.apprunner.us-west-2.awsapprunner.com
+```
+
+Stack: `fleetguard-apprunner` · Template: [../apprunner/template.yaml](../apprunner/template.yaml)
+
+## 4. Deploy Path A (SAM)
 
 ```cmd
 call infrastructure\scripts\use-default-aws.cmd
@@ -66,7 +76,7 @@ cd ..\..
 powershell -File infrastructure\scripts\upload_models.ps1 -Bucket MODEL_BUCKET_FROM_OUTPUT
 ```
 
-## 4. Smoke test Path A
+## 5. Smoke test Path A
 
 ```cmd
 set API=https://YOUR_API.execute-api.us-west-2.amazonaws.com
@@ -75,10 +85,6 @@ python ml\scripts\replay.py --api %API% --mode seed
 python ml\scripts\replay.py --api %API% --mode replay --limit 100
 ```
 
-## 5. Deploy Path B (App Runner)
-
-See [../sam/README.md](../sam/README.md) § App Runner and [../../backend/README.md](../../backend/README.md).
-
 ## 6. Hand off to frontend
 
-Copy URLs into `docs/deploy-urls.md` (from `docs/deploy-urls.example.md`).
+Copy URLs into [../../docs/deploy-urls.md](../../docs/deploy-urls.md). Set Amplify env vars (see file).

@@ -132,6 +132,20 @@ Resources:
                   - s3:PutObject
                   - s3:ListBucket
                 Resource: "*"
+              # App Runner (Path B service)
+              - Sid: AppRunnerDeploy
+                Effect: Allow
+                Action:
+                  - apprunner:*
+                Resource: "*"
+              - Sid: AppRunnerRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName: apprunner.amazonaws.com
 
 Outputs:
   GitHubActionsRoleArn:

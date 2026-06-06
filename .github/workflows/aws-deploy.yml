@@ -1,7 +1,7 @@
 name: AWS Deploy
 
-# Manual deploy only until AWS OIDC + secrets are configured.
-# To re-enable auto-deploy on push to main, uncomment the push block below.
+# Manual deploy: Actions → AWS Deploy → Run workflow
+# Requires repo variable ENABLE_AWS_DEPLOY=true and secret AWS_DEPLOY_ROLE_ARN
 on:
   workflow_dispatch:
   # push:
@@ -13,11 +13,67 @@ permissions:
 
 env:
   AWS_REGION: us-west-2
+  ECR_REPOSITORY: fleetguard-backend
+  APPRUNNER_STACK: fleetguard-apprunner
 
 jobs:
+  deploy-path-b:
+    runs-on: ubuntu-latest
+    if: vars.ENABLE_AWS_DEPLOY == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-fleetguard-${{ github.run_id }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }} \
+            || aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f backend/Dockerfile -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Deploy App Runner stack
+        env:
+          IMAGE_URI: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/apprunner/template.yaml \
+            --stack-name ${{ env.APPRUNNER_STACK }} \
+            --parameter-overrides \
+              ImageUri="$IMAGE_URI" \
+              ServiceName=${{ env.ECR_REPOSITORY }} \
+              EcrRepositoryName=${{ env.ECR_REPOSITORY }} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region ${{ env.AWS_REGION }} \
+            --no-fail-on-empty-changeset
+
+      - name: App Runner service URL
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name ${{ env.APPRUNNER_STACK }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ServiceUrl'].OutputValue" \
+            --output text \
+            --region ${{ env.AWS_REGION }}
+
   deploy-path-a:
     runs-on: ubuntu-latest
-    # Extra gate: set repo variable ENABLE_AWS_DEPLOY=true to allow runs (Actions → Variables).
+    needs: deploy-path-b
     if: vars.ENABLE_AWS_DEPLOY == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -53,39 +109,10 @@ jobs:
           chmod +x infrastructure/scripts/upload_models.sh
           ./infrastructure/scripts/upload_models.sh "$BUCKET" fleetguard-model ${{ env.AWS_REGION }}
 
-  deploy-path-b:
-    runs-on: ubuntu-latest
-    needs: deploy-path-a
-    if: vars.ENABLE_AWS_DEPLOY == 'true'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-fleetguard-${{ github.run_id }}
-
-      - name: Ensure ECR repository exists
+      - name: Path A API URL
         run: |
-          aws ecr describe-repositories --repository-names fleetguard-backend --region ${{ env.AWS_REGION }} \
-            || aws ecr create-repository --repository-name fleetguard-backend --region ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push backend image
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-          ECR_REPOSITORY: fleetguard-backend
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -f backend/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-      - name: App Runner note
-        run: |
-          echo "Update App Runner service to use latest ECR image tag, or wire apprunner update-service in a follow-up step."
+          aws cloudformation describe-stacks \
+            --stack-name fleetguard-path-a \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text \
+            --region ${{ env.AWS_REGION }}
