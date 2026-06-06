@@ -155,7 +155,7 @@ sequenceDiagram
 
 ### 4.2 Deploy flow (CI/CD)
 
-Push to `main` → GitHub Actions → ECR images → Terraform apply → CloudFront sync.
+Push to `main` → **Amplify** deploys `frontend/`; GitHub Actions deploys backend/infra (ECR, Terraform).
 Details: [team_guide.md](team_guide.md) and [../fleetguard_prep/docs/technicals.md](../fleetguard_prep/docs/technicals.md) §8.
 
 ---

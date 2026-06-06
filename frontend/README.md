@@ -1,24 +1,30 @@
 # FleetGuard Frontend
 
-Next.js (App Router) dashboard — **Live Monitor** tab (Path A) and **Analyze Logs** tab (Path B).
+Next.js (App Router) dashboard — **Live Monitor** (Path A) and **Analyze Logs** (Path B).
 
-## Planned structure
+**Hosting:** **AWS Amplify Hosting** (Git-connected, auto-build on push).
 
-```
-frontend/
-├── public/
-└── src/
-    ├── app/              layout, pages (/live, /analyze)
-    ├── components/
-    │   ├── charts/       anomaly scatter, route map
-    │   ├── ui/           data table, file dropzone
-    │   └── reports/      AI insight cards
-    ├── hooks/            useFleetData, useIncidents
-    ├── lib/              api-client, utils
-    └── types/            fleet.ts (mirrors backend Pydantic)
+## Local dev
+
+```powershell
+cd frontend
+npm install
+copy .env.example .env.local
+npm run dev
 ```
 
-## Env vars (planned)
+## Amplify deploy
 
-- `NEXT_PUBLIC_API_URL` — API Gateway (Lambda / real-time)
-- `NEXT_PUBLIC_BATCH_API_URL` — App Runner (FastAPI / batch)
+1. AWS Console → **Amplify** → Host web app → connect GitHub repo.
+2. Set **monorepo app root** to `frontend/`.
+3. Amplify uses `frontend/amplify.yml` for build settings.
+4. Add environment variables in Amplify Console:
+   - `NEXT_PUBLIC_API_URL` — API Gateway (Path A)
+   - `NEXT_PUBLIC_BATCH_API_URL` — App Runner (Path B)
+
+Build spec: standard Next.js (`npm run build`). HTTPS URL:
+`https://main.<app-id>.amplifyapp.com`
+
+## Env vars
+
+See `.env.example` for local development (same names as Amplify).

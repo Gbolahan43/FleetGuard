@@ -1,0 +1,74 @@
+flowchart TB
+  subgraph USERS["Users & Data Sources"]
+    MGR["Fleet Manager"]
+    ANALYST["Operations Analyst"]
+    GPS["Telematics / GPS"]
+    REPLAY["CSV Replayer ml/scripts/replay.py"]
+  end
+
+  subgraph FRONTEND["Frontend — AWS Amplify Hosting"]
+    GH["GitHub repo — frontend/"]
+    AMP["AWS Amplify — Next.js build & deploy"]
+    LIVE["Live Monitor Tab"]
+    BATCH["Analyze Logs Tab"]
+  end
+
+  subgraph PATHA["Path A — Primary Real-Time"]
+    APIGW["API Gateway HTTP API"]
+    LAMBDA["Lambda ScoreFn — Container arm64"]
+    VSTATE[("DynamoDB vehicle-state")]
+  end
+
+  subgraph PATHB["Path B — Secondary Batch"]
+    APPRUNNER["App Runner — FastAPI backend/"]
+  end
+
+  subgraph MLAI["Shared ML & AI"]
+    S3MODEL["S3 Model Bucket — IsolationForest + Scaler"]
+    INFER["inference_core.py — 12 features"]
+    BEDROCK["Amazon Bedrock — Claude Haiku / Sonnet"]
+  end
+
+  subgraph DATA["Persistence"]
+    INCIDENTS[("DynamoDB fleetguard-incidents")]
+  end
+
+  subgraph OPS["Ops & CI/CD"]
+    CW["CloudWatch Logs"]
+    EB["EventBridge Warm Ping"]
+    GHA["GitHub Actions OIDC — backend & infra"]
+    ECR["Amazon ECR"]
+  end
+
+  MGR --> AMP
+  ANALYST --> AMP
+  GH -->|"push main"| AMP
+  AMP --> LIVE
+  AMP --> BATCH
+
+  GPS -->|"POST /score"| APIGW
+  REPLAY -->|"POST /score"| APIGW
+  LIVE -->|"GET /incidents"| APIGW
+  BATCH -->|"POST /api/v1/analyze-fleet"| APPRUNNER
+
+  APIGW --> LAMBDA
+  LAMBDA --> VSTATE
+  LAMBDA --> S3MODEL
+  APPRUNNER --> S3MODEL
+
+  LAMBDA --> INFER
+  APPRUNNER --> INFER
+
+  LAMBDA -->|"anomaly"| BEDROCK
+  APPRUNNER -->|"top-N anomalies"| BEDROCK
+
+  LAMBDA -->|"source: realtime"| INCIDENTS
+  APPRUNNER -.->|"optional source: batch"| INCIDENTS
+
+  LAMBDA --> CW
+  APPRUNNER --> CW
+  EB --> LAMBDA
+
+  GHA --> ECR
+  ECR --> LAMBDA
+  ECR --> APPRUNNER

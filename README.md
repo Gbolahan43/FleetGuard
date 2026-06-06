@@ -29,6 +29,7 @@ private use, excessive idling) with AI incident insights.
 | [docs/data_schema.md](docs/data_schema.md) | CSV, features, DynamoDB |
 
 | [docs/team_guide.md](docs/team_guide.md) | Workstreams & build order |
+| [Architecture-diagram.md](Architecture-diagram.md) | High-level AWS architecture + diagram PNG |
 
 
 

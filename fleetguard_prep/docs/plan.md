@@ -24,7 +24,7 @@ per alert.
 ## Backbone
 
 ```
-React dashboard (S3 + CloudFront)
+React dashboard (AWS Amplify Hosting)
       |  HTTPS
 API Gateway (HTTP API)  <-- POST /score { pings: [...] }
       |
@@ -53,7 +53,7 @@ See [architecture.md](architecture.md), [technicals.md](technicals.md), [SOW.md]
 | 0:45-2:00 | Deploy Lambda + HTTP API; verify `POST /score` with curl | `sam local invoke` smoke test; replay `fleetguard_telemetry.csv` pings | Plot vehicle pings + anomaly markers |
 | 2:00-3:30 | Wire Bedrock; CORS; CloudWatch | Seed `fleetguard-incidents`; verify incident reports | Live incident log + filters by anomaly type |
 | 3:30-4:30 | Tighten IAM; provisioned concurrency for demo | Integration with frontend; payload checks | Bedrock report panel + vehicle drilldown |
-| 4:30-5:30 | CloudFront deploy (optional domain); smoke test | Confirm live scoring + Bedrock output | Polish, responsive layout |
+| 4:30-5:30 | Smoke test APIs | Confirm live scoring + Bedrock output | Amplify deploy + polish UI |
 | 5:30-6:00 | Demo rehearsal + cached fallback | | |
 
 ## Deliverables

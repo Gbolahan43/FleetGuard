@@ -78,7 +78,7 @@ Detection is **unsupervised** (IsolationForest) — no labelled incidents requir
 | --- | --- |
 | FR-S1 | Same model artifacts and feature engineering on Path A and B |
 | FR-S2 | Parity test: identical input row → identical score on both paths |
-| FR-S3 | Deploy on AWS (Lambda, App Runner, S3, DynamoDB, Bedrock, CloudFront) |
+| FR-S3 | Deploy on AWS (Lambda, App Runner, S3, DynamoDB, Bedrock, **Amplify**) |
 
 ## 6. Non-functional requirements
 
@@ -112,12 +112,12 @@ Detection is **unsupervised** (IsolationForest) — no labelled incidents requir
 | --- | --- |
 | Lambda + API Gateway | Path A real-time scoring |
 | App Runner | Path B FastAPI batch service |
-| S3 | Model artifacts + frontend static hosting |
+| S3 | Model artifacts only (not frontend static site) |
 | DynamoDB | Incidents + vehicle-state |
 | Bedrock (Claude) | Incident insight text |
-| CloudFront | Frontend CDN |
+| **Amplify Hosting** | Next.js dashboard build, HTTPS, Git deploy |
 | CloudWatch | Logs and metrics |
-| GitHub Actions (OIDC) | CI/CD |
+| GitHub Actions (OIDC) | CI/CD for backend/infra (Amplify handles frontend) |
 
 Full justification: [../fleetguard_prep/docs/SOW.md](../fleetguard_prep/docs/SOW.md).
 

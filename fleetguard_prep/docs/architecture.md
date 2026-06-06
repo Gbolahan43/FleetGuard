@@ -84,7 +84,9 @@ flowchart TB
     cwl["CloudWatch"]
   end
 
-  subgraph ui [Next.js dashboard - S3 + CloudFront]
+  subgraph ui [Next.js dashboard - AWS Amplify Hosting]
+    mgr["Fleet manager"]
+    amp["Amplify app — frontend/"]
     live["Live Monitor tab"]
     audit["Analyze Logs tab"]
   end
@@ -100,8 +102,10 @@ flowchart TB
   scorefn --> cwl
   fastapi --> cwl
 
+  mgr --> amp
+  amp --> live
+  amp --> audit
   live --> apigw
-  live --> ddb
   audit --> fastapi
 ```
 
@@ -212,6 +216,19 @@ filter by `source` in the dashboard.
 | **Analyze Logs** | `POST /api/v1/analyze-fleet` | File dropzone, data table, anomaly scatter, AI insight cards |
 
 Env vars: `NEXT_PUBLIC_API_URL` (Lambda/API Gateway), `NEXT_PUBLIC_BATCH_API_URL` (App Runner).
+Set in **Amplify Console** environment variables.
+
+---
+
+## Frontend hosting — AWS Amplify
+
+| Aspect | Detail |
+| --- | --- |
+| Service | **AWS Amplify Hosting** |
+| Source | GitHub repo, app root `frontend/` |
+| Build | Amplify runs `npm ci && npm run build` (see `frontend/amplify.yml`) |
+| URL | `https://<branch>.<app-id>.amplifyapp.com` or custom domain |
+| Env vars | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BATCH_API_URL` in Amplify Console |
 
 ---
 
@@ -219,9 +236,8 @@ Env vars: `NEXT_PUBLIC_API_URL` (Lambda/API Gateway), `NEXT_PUBLIC_BATCH_API_URL
 
 GitHub Actions (OIDC, no long-lived AWS keys):
 
-- **PR:** lint, model smoke test (`n_features_in_ == 12`), `sam validate`, `next build`.
-- **Merge → main:** build Lambda image → ECR → `sam deploy`; build FastAPI image → App Runner;
-  build Next.js → S3 → CloudFront invalidation.
+- **PR:** lint, model smoke test, Terraform validate, optional `next lint`.
+- **Merge → main:** Amplify auto-deploys `frontend/`; GitHub Actions deploys Lambda → ECR → Terraform and App Runner.
 
 ---
 

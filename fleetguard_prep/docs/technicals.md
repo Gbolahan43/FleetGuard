@@ -27,7 +27,7 @@ Pairs with [architecture.md](architecture.md), [SOW.md](SOW.md), and [plan.md](p
 | D-11 | Lambda packaging | **Container image (ECR), `arm64`** | sklearn exceeds zip limit |
 | D-12 | Batch hosting | **AWS App Runner** (FastAPI container) | Always warm, simple deploy from ECR |
 | D-13 | Frontend | **Next.js (App Router)** — two tabs: Live Monitor + Analyze Logs | |
-| D-14 | Frontend hosting | **Static export → S3 + CloudFront** | Client-side; dual API env vars |
+| D-14 | Frontend hosting | **AWS Amplify Hosting** (Git → `frontend/`) | Managed Next.js build/deploy, HTTPS, env vars; no manual S3/CloudFront wiring |
 | D-15 | CI/CD | **GitHub Actions OIDC** | No long-lived AWS keys |
 | D-16 | Cold starts (Path A) | **EventBridge warm-ping every 5 min** during demo | Path B has no cold starts (App Runner) |
 | D-17 | Bedrock reliability | **Pre-seed demo incidents**; cached-text fallback on throttle | Demo cannot depend on live LLM |
@@ -122,7 +122,7 @@ Existing `fleetguard_lambda_handler.py` implements `POST /score`. Add:
 | `ScoreFunction` | Serverless Function (Image) | Path A handler |
 | `HttpApi` | HTTP API | `POST /score`, `GET /incidents`; CORS |
 | `WarmRule` | EventBridge | `rate(5 minutes)` → ScoreFunction (**D-16**) |
-| `WebBucket` + `Distribution` | S3 + CloudFront | Next.js static export |
+| `WebBucket` + `Distribution` | ~~S3 + CloudFront~~ | **Removed** — frontend on **Amplify Hosting** (D-14) |
 
 ### 2.6 Replay script (`fleetguard_replay.py`)
 
@@ -273,7 +273,7 @@ Demo safety: pre-seed via `fleetguard_replay.py --mode seed`; fallback to cached
 
 ## 7. Frontend — `frontend/`  `[TO BUILD]`
 
-Next.js (App Router, TypeScript, Tailwind), static export → S3 + CloudFront.
+Next.js (App Router, TypeScript, Tailwind), deployed on **AWS Amplify Hosting** (D-14).
 
 ### 7.1 Setup
 
@@ -281,39 +281,61 @@ Next.js (App Router, TypeScript, Tailwind), static export → S3 + CloudFront.
 npx create-next-app@latest frontend --ts --app --tailwind --eslint
 ```
 
-`next.config.mjs`: `output: 'export'`, `images: { unoptimized: true }`.
+Use standard `next build` (no `output: 'export'` required). Amplify runs the build in CI and
+hosts the app at `https://<branch>.<app-id>.amplifyapp.com`.
 
-### 7.2 Dashboard tabs
+Monorepo config: **`frontend/amplify.yml`** (or root `amplify.yml` with `appRoot: frontend`).
+
+### 7.2 Amplify Console
+
+1. Connect GitHub repo → Amplify → **Host web app**.
+2. Set **app root** to `frontend/`.
+3. Add environment variables:
+   - `NEXT_PUBLIC_API_URL` — API Gateway base URL (Path A)
+   - `NEXT_PUBLIC_BATCH_API_URL` — App Runner URL (Path B)
+4. Enable auto-deploy on push to `main`.
+
+CORS on API Gateway and App Runner must allow the Amplify domain.
+
+### 7.3 Dashboard tabs
 
 | Tab | Route | API | Components |
 | --- | --- | --- | --- |
 | **Live Monitor** | `/` or `/live` | `NEXT_PUBLIC_API_URL` | Map (Leaflet), incident log, AI drilldown, summary cards |
 | **Analyze Logs** | `/analyze` | `NEXT_PUBLIC_BATCH_API_URL` | `file-dropzone`, `data-table`, `anomaly-scatter`, `ai-insight-card` |
 
-### 7.3 Env vars
+### 7.4 Env vars (Amplify + local `.env.local`)
 
 ```env
 NEXT_PUBLIC_API_URL=https://xxxx.execute-api.us-east-1.amazonaws.com
 NEXT_PUBLIC_BATCH_API_URL=https://xxxx.us-east-1.awsapprunner.com
 ```
 
-### 7.4 Types
+### 7.5 Types
 
 `frontend/src/types/fleet.ts` mirrors `backend/app/schemas/fleet_data.py` (TripLog, ScoredRow,
 AnomalyReport, AnalyzeFleetResponse).
 
 ---
 
-## 8. CI/CD — `.github/workflows/aws-deploy.yml`  `[TO BUILD]`
+## 8. CI/CD  `[TO BUILD]`
 
-OIDC role (no static AWS keys). On push to `main`:
+**Split pipeline:**
 
-1. **Lint & test** — pytest inference parity; `sam validate`; `next lint`.
-2. **Path A** — build Lambda image → push ECR → `sam deploy`.
-3. **Path B** — build FastAPI image → push ECR → update App Runner service.
-4. **Frontend** — `next build` → sync `out/` to S3 → CloudFront invalidation.
+| Layer | Tool | Trigger |
+| --- | --- | --- |
+| **Frontend** | **AWS Amplify Hosting** | Git push to `main` (builds `frontend/`) |
+| **Backend + infra** | **GitHub Actions OIDC** | `.github/workflows/aws-deploy.yml` |
 
-On PR: steps 1 only (no deploy).
+GitHub Actions on push to `main`:
+
+1. **Lint & test** — pytest inference parity; Terraform validate; optional `next lint`.
+2. **Path A** — build Lambda image → push ECR → Terraform/SAM deploy.
+3. **Path B** — build FastAPI image → push ECR → update App Runner.
+
+Amplify handles frontend build/deploy separately (no S3 sync or CloudFront invalidation).
+
+On PR: GitHub Actions runs tests only; Amplify preview branches optional.
 
 ---
 
@@ -359,7 +381,7 @@ logs:*
 - [ ] **Path A:** `POST /score` live; anomalies + Bedrock reports; `GET /incidents` for Live Monitor.
 - [ ] **Path B:** `POST /api/v1/analyze-fleet` live; CSV upload returns scored rows + top-N AI insights.
 - [ ] **Shared:** parity test passes; same model artifacts in S3.
-- [ ] **Frontend:** both tabs on CloudFront; dual API URLs configured.
+- [ ] **Frontend:** both tabs live on **Amplify**; dual API URLs in Amplify env vars.
 - [ ] **IaC:** SAM template (Path A) + App Runner service (Path B) reproducible.
 - [ ] **CI/CD:** GitHub Actions deploys on merge to `main`.
 - [ ] **Demo:** replayer for Live Monitor + CSV upload fallback rehearsed.
@@ -374,5 +396,5 @@ logs:*
 4. `sam build && sam deploy`; upload model artifacts to S3.
 5. Scaffold FastAPI batch service; wire to `inference_core`; build App Runner image.
 6. Write `fleetguard_replay.py`; smoke-test Path A; upload sample CSV for Path B.
-7. Build Next.js frontend (both tabs); deploy to S3 + CloudFront.
-8. Add GitHub Actions workflow; rehearse demo (replayer + CSV upload fallback).
+7. Build Next.js frontend (both tabs); connect repo to **Amplify Hosting** (`frontend/`).
+8. Add GitHub Actions workflow for backend/infra; rehearse demo.

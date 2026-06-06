@@ -162,7 +162,7 @@ See [../fleetguard_prep/docs/technicals.md](../fleetguard_prep/docs/technicals.m
 
 - [ ] Live Monitor: map, incident log, AI panel
 - [ ] Analyze Logs: dropzone, table, scatter, AI cards
-- [ ] Deployed to CloudFront with both env vars set
+- [ ] Deployed to **Amplify** with both env vars set
 
 ### Demo
 

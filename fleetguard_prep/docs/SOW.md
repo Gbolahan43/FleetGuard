@@ -10,7 +10,7 @@ reports - on AWS within ~5-6 hours, and justify each AWS service vs the alternat
 ### In scope
 - Package the IsolationForest + scaler as a container-image Lambda behind `POST /score`.
 - Provision S3, Lambda, API Gateway, DynamoDB, Bedrock, CloudWatch via AWS SAM.
-- Fleet dashboard (S3 + CloudFront): vehicle map, incident log, Bedrock report panel.
+- Fleet dashboard (**AWS Amplify Hosting**): vehicle map, incident log, Bedrock report panel.
 - Bedrock incident reports for anomalies.
 
 ### Out of scope (time-boxed)
@@ -24,7 +24,7 @@ reports - on AWS within ~5-6 hours, and justify each AWS service vs the alternat
 | --- | --- | --- |
 | D1 | `POST /score` API | Returns per-ping anomaly flag, score, and report |
 | D2 | Incident persistence | Anomalies stored in DynamoDB and shown in the live feed |
-| D3 | Dashboard | Map + incident log + AI report over CloudFront |
+| D3 | Dashboard | Map + incident log + AI report on **Amplify** |
 | D4 | SAM template | Reproduces the FleetGuard stack from scratch |
 
 ## 4. Service selection & justification
@@ -72,8 +72,13 @@ Managed, pay-per-token incident reports; no LLM infra; data stays in-region.
 | External API (OpenAI) | Third-party dependency + data egress |
 | Comprehend | Classification/NER, not free-form report generation |
 
-### 4.6 Frontend - S3 + CloudFront
-Cheap global HTTPS static hosting.
+### 4.6 Frontend - AWS Amplify Hosting
+Git-connected Next.js build/deploy, HTTPS, branch previews, env vars — faster than hand-rolling S3 + CloudFront.
+
+| Alternative | Why not |
+| --- | --- |
+| S3 + CloudFront | More manual CI (sync + invalidation); Amplify chosen for speed |
+| Vercel | Third-party; hackathon requires AWS |
 
 ### 4.7 IaC - AWS SAM
 Purpose-built for serverless; minimal template.
