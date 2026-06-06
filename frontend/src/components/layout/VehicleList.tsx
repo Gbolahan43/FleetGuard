@@ -150,4 +150,17 @@ export default function VehicleList() {
                 >
                   <div
                     className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${fuelPct}%`, backgrou
+                    style={{ width: `${fuelPct}%`, background: fuelBg }}
+                  />
+                </div>
+                <span className="font-data text-[10px] shrink-0 w-10 text-right" style={{ color: "#334155" }}>
+                  {Math.round(v.currentPosition.speed)} km/h
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
