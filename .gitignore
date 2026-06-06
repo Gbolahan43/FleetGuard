@@ -21,8 +21,11 @@ dist/
 *.tsbuildinfo
 
 # ML artifacts (keep metadata JSON; ignore large binaries)
+# Note: fleetguard_anomaly_model.pkl and fleetguard_scaler.pkl are committed for deployment
 ml/models/*.pkl
 ml/models/*.joblib
+!ml/models/fleetguard_anomaly_model.pkl
+!ml/models/fleetguard_scaler.pkl
 
 # Terraform
 **/.terraform/
