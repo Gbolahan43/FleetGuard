@@ -60,12 +60,12 @@ docker build -f Dockerfile.lambda -t fleetguard-score .
 
 Upload runtime artifacts to S3:
 
+```powershell
+# After sam deploy — use ModelBucketName output
+..\..\infrastructure\scripts\upload_models.ps1 -Bucket <ModelBucketName>
 ```
-s3://<bucket>/fleetguard-model/
-├── fleetguard_anomaly_model.pkl
-├── fleetguard_scaler.pkl
-└── fleetguard_feature_cols.json
-```
+
+SAM deploy: see [../infrastructure/sam/README.md](../infrastructure/sam/README.md).
 
 ## Path B — shared inference
 
