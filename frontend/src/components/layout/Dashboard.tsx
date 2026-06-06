@@ -22,7 +22,29 @@ const FleetMap = dynamic(() => import("@/components/map/FleetMap"), {
 });
 
 export default function Dashboard() {
-  const { stats, activeTab } = useFleet();
+  const { stats, activeTab, isLoading, error } = useFleet();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ background: "#020d18" }}>
+        <div className="text-center">
+          <div className="w-8 h-8 border border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm tracking-wider" style={{ color: "#94a3b8" }}>Analyzing fleet data with ML...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ background: "#020d18" }}>
+        <div className="text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: "#020d18" }}>
