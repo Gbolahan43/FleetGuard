@@ -1,30 +1,36 @@
-# FleetGuard Frontend
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Next.js (App Router) dashboard — **Live Monitor** (Path A) and **Analyze Logs** (Path B).
+## Getting Started
 
-**Hosting:** **AWS Amplify Hosting** (Git-connected, auto-build on push).
+First, run the development server:
 
-## Local dev
-
-```powershell
-cd frontend
-npm install
-copy .env.example .env.local
+```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Amplify deploy
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-1. AWS Console → **Amplify** → Host web app → connect GitHub repo.
-2. Set **monorepo app root** to `frontend/`.
-3. Amplify uses `frontend/amplify.yml` for build settings.
-4. Add environment variables in Amplify Console:
-   - `NEXT_PUBLIC_API_URL` — API Gateway (Path A)
-   - `NEXT_PUBLIC_BATCH_API_URL` — App Runner (Path B)
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Build spec: standard Next.js (`npm run build`). HTTPS URL:
-`https://main.<app-id>.amplifyapp.com`
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Env vars
+## Learn More
 
-See `.env.example` for local development (same names as Amplify).
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
