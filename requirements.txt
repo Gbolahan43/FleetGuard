@@ -1,0 +1,8 @@
+# Shared Python environment (repo root)
+#
+#   py -m venv .venv
+#   .\.venv\Scripts\Activate.ps1
+#   pip install -r requirements.txt
+
+-r ml/requirements.txt
+-r backend/requirements.txt

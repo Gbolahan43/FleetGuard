@@ -1,0 +1,14 @@
+[
+  "speed_kmh",
+  "fuel_level_pct",
+  "engine_on",
+  "idle_minutes",
+  "hour",
+  "day_of_week",
+  "is_working_hour",
+  "zone_distance_deg",
+  "fuel_delta",
+  "off_hours_speed",
+  "idle_speed_ratio",
+  "zone_breach"
+]
