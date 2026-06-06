@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: FleetGuard Path A — real-time scoring (Lambda + API Gateway + DynamoDB)
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-5-sonnet-20241022-v2:0
+    Description: Bedrock model for live incident reports
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  ModelBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: vehicle_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: incident_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: vehicle_id-index
+          KeySchema:
+            - AttributeName: vehicle_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  VehicleStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: vehicle_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vehicle_id
+          KeyType: HASH
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - "*"
+
+  ScoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          MODEL_BUCKET: !Ref ModelBucket
+          MODEL_PREFIX: fleetguard-model
+          DYNAMO_TABLE: !Ref IncidentsTable
+          STATE_TABLE: !Ref VehicleStateTable
+          BEDROCK_REGION: !Ref AWS::Region
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ModelBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VehicleStateTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+      Events:
+        ScoreRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /score
+            Method: POST
+        IncidentsRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents
+            Method: GET
+    Metadata:
+      Dockerfile: Dockerfile.lambda
+      DockerContext: ../../ml
+
+  WarmRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Keep Lambda warm during demo windows
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Id: ScoreFunctionWarmTarget
+          Arn: !GetAtt ScoreFunction.Arn
+          Input: '{"warmup": true}'
+
+  WarmRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ScoreFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WarmRule.Arn
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway HTTP API base URL (NEXT_PUBLIC_API_URL)
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  ModelBucketName:
+    Description: S3 bucket for model artifacts — run upload_models script
+    Value: !Ref ModelBucket
+  IncidentsTableName:
+    Value: !Ref IncidentsTable
+  VehicleStateTableName:
+    Value: !Ref VehicleStateTable
+  ScoreFunctionArn:
+    Value: !GetAtt ScoreFunction.Arn

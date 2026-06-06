@@ -1,27 +1,33 @@
 # FleetGuard Infrastructure
 
-Terraform (AWS) and deploy scripts for the hybrid stack.
+Terraform (future) and **SAM** (Path A) deploy scripts for the hybrid stack.
 
-## Planned structure
+## Quick start
+
+1. Read [scripts/bootstrap_checklist.md](scripts/bootstrap_checklist.md) — Bedrock + AWS CLI
+2. Deploy Path A: [sam/README.md](sam/README.md)
+3. Upload models: `.\scripts\upload_models.ps1 -Bucket <ModelBucketName>`
+4. Deploy Path B: `.\scripts\deploy_apprunner.ps1 -RepositoryName fleetguard-backend`
+5. Smoke tests: `smoke_path_a.ps1`, `smoke_path_b.ps1`
+6. Hand URLs to frontend: [../docs/deploy-urls.md](../docs/deploy-urls.md)
+
+## Layout
 
 ```
 infrastructure/
-├── terraform/
-│   ├── modules/
-│   │   ├── lambda/         Path A — ScoreFn + API Gateway routes
-│   │   ├── apprunner/      Path B — FastAPI service
-│   │   ├── dynamodb/       incidents + vehicle-state tables
-│   │   ├── s3/             model bucket only (not frontend)
-│   │   ├── api_gateway/    HTTP API (/score, /incidents)
-│   │   ├── amplify/        Amplify app (frontend Hosting) — optional IaC
-│   │   └── iam/            OIDC + least-privilege roles
-│   └── environments/
-│       ├── dev/
-│       └── prod/
-└── scripts/                bootstrap, deploy, seed
+├── sam/
+│   ├── template.yaml       Path A — Lambda + API Gateway + DynamoDB + S3
+│   ├── events/             Sample Lambda invoke payloads
+│   └── README.md
+├── scripts/
+│   ├── upload_models.ps1   S3 model upload
+│   ├── smoke_path_a.ps1    POST /score + GET /incidents
+│   ├── smoke_path_b.ps1    POST /api/v1/analyze-fleet
+│   ├── deploy_apprunner.ps1  ECR build + push
+│   └── bootstrap_checklist.md
+└── terraform/              (post-demo) optional full IaC
 ```
 
-**Frontend:** hosted on **AWS Amplify** (Git-connected). Amplify Console can provision the app
-without Terraform; optional `amplify/` module for full IaC.
+**Frontend:** AWS Amplify (Git → `frontend/`). See [../frontend/README.md](../frontend/README.md).
 
-Region default: `us-east-1`. See `fleetguard_prep/docs/technicals.md` for resource list.
+Region default: `us-east-1`.

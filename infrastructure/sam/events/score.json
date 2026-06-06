@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /score",
+  "rawPath": "/score",
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/score"
+    }
+  },
+  "body": "{\"pings\":[{\"vehicle_id\":\"LG-1001\",\"timestamp\":\"2025-01-26T15:19:00\",\"lat\":6.455,\"lng\":3.395,\"speed_kmh\":45.2,\"fuel_level_pct\":62.5,\"engine_on\":1,\"idle_minutes\":5,\"hour\":15,\"day_of_week\":0,\"is_working_hour\":1,\"zone_distance_deg\":0.012}]}"
+}

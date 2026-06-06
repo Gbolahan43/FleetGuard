@@ -18,6 +18,23 @@ cd backend
 uvicorn app.main:app --reload --port 8080
 ```
 
+## Docker (App Runner)
+
+Build from **repo root**:
+
+```powershell
+docker build -f backend/Dockerfile -t fleetguard-backend .
+docker run -p 8080:8080 fleetguard-backend
+```
+
+Deploy to ECR + App Runner: see [../infrastructure/scripts/deploy_apprunner.ps1](../infrastructure/scripts/deploy_apprunner.ps1).
+
+Smoke test:
+
+```powershell
+.\infrastructure\scripts\smoke_path_b.ps1 -BaseUrl http://localhost:8080
+```
+
 - Health: http://127.0.0.1:8080/healthz
 - Analyze: `POST /api/v1/analyze-fleet` with multipart `file` (CSV)
 

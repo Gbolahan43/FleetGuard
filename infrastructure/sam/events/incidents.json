@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /incidents",
+  "rawPath": "/incidents",
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/incidents"
+    }
+  },
+  "queryStringParameters": {
+    "limit": "10",
+    "source": "realtime"
+  }
+}

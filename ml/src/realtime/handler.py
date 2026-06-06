@@ -87,6 +87,17 @@ def update_vehicle_state(ping: dict[str, Any]) -> None:
     )
 
 
+def _fallback_incident_report(ping: dict[str, Any], score: float, fuel_delta: float) -> str:
+    zone_km = round(float(ping.get("zone_distance_deg", 0)) * 111, 1)
+    return (
+        f"Vehicle {ping['vehicle_id']} triggered an anomaly at "
+        f"{ping.get('timestamp', 'unknown time')}: score {score:.3f}, "
+        f"speed {ping.get('speed_kmh')} km/h, fuel {ping.get('fuel_level_pct')}% "
+        f"(delta {fuel_delta:.1f}%), idle {ping.get('idle_minutes', 0)} min, "
+        f"~{zone_km} km from approved zone. Review telemetry and contact the driver."
+    )
+
+
 def generate_incident_report(ping: dict[str, Any], score: float, fuel_delta: float) -> str:
     prompt = (
         f"Vehicle {ping['vehicle_id']} triggered a fleet anomaly alert at "
@@ -102,20 +113,23 @@ def generate_incident_report(ping: dict[str, Any], score: float, fuel_delta: flo
         f"Anomaly confidence score: {abs(score):.3f}. "
         f"Write a concise 3-sentence incident report for the fleet manager."
     )
-    response = bedrock.invoke_model(
-        modelId=BEDROCK_MODEL_ID,
-        body=json.dumps(
-            {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 300,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-        ),
-        contentType="application/json",
-        accept="application/json",
-    )
-    result = json.loads(response["body"].read())
-    return result["content"][0]["text"]
+    try:
+        response = bedrock.invoke_model(
+            modelId=BEDROCK_MODEL_ID,
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 300,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
+            contentType="application/json",
+            accept="application/json",
+        )
+        result = json.loads(response["body"].read())
+        return result["content"][0]["text"]
+    except Exception:
+        return _fallback_incident_report(ping, score, fuel_delta)
 
 
 def store_incident(ping: dict[str, Any], score: float, fuel_delta: float, report: str) -> None:
@@ -223,7 +237,11 @@ def handler(event, context):
         )
         pings = (body or {}).get("pings", [])
         if not pings:
-            return {"statusCode": 400, "body": json.dumps({"error": "No pings provided"})}
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "body": json.dumps({"error": "No pings provided"}),
+            }
         payload = score_pings(pings)
         return {
             "statusCode": 200,
@@ -231,4 +249,8 @@ def handler(event, context):
             "body": json.dumps(payload),
         }
 
-    return {"statusCode": 404, "body": json.dumps({"error": "Not found"})}
+    return {
+        "statusCode": 404,
+        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+        "body": json.dumps({"error": "Not found"}),
+    }

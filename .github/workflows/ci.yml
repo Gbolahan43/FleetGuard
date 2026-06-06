@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ml-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ML dependencies
+        run: |
+          pip install scikit-learn==1.5.2 numpy==1.26.4 pandas boto3 pytest
+          pip install -r ml/requirements.txt
+
+      - name: Parity tests
+        run: pytest ml/tests/ -q
+
+  backend-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install scikit-learn==1.5.2 numpy==1.26.4 pandas boto3
+          pip install -r backend/requirements.txt
+
+      - name: Import FastAPI app
+        working-directory: backend
+        run: python -c "from app.main import app; print(app.title)"
+
+  sam-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/setup-sam@v2
+
+      - name: Validate SAM template
+        run: sam validate --template infrastructure/sam/template.yaml
