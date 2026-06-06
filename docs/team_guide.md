@@ -204,7 +204,7 @@ See [../fleetguard_prep/docs/technicals.md](../fleetguard_prep/docs/technicals.m
 | Lambda handler (Path A) | ✅ Done in `ml/src/realtime/handler.py` |
 | Shared inference core | ✅ Done in `ml/src/inference/` |
 | Monorepo scaffold | ✅ Done |
-| FastAPI backend | 🔲 Scaffold only |
-| Frontend | 🔲 Scaffold only |
-| Terraform / CI | 🔲 Scaffold only |
+| FastAPI backend | ✅ Done locally; deploy via App Runner |
+| Frontend | 🔲 In progress |
+| SAM / CI | ✅ Template + workflows in repo |
 | Root docs | ✅ This folder |

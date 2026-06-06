@@ -150,10 +150,14 @@ GET /incidents?limit=50&vehicle_id=LG-1001&source=realtime
 **Response `200`**
 
 ```json
-{ "status": "ok" }
+{
+  "status": "ok",
+  "model_loaded": true,
+  "model_path": "/app/models"
+}
 ```
 
-Used by App Runner health checks.
+Used by App Runner health checks. `model_loaded` confirms scoring artifacts are readable.
 
 ---
 
