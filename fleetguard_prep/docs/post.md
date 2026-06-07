@@ -184,7 +184,9 @@ Comment **FLEET** if you want the repo link or a walkthrough when we go live. Ta
 ## Publishing checklist
 
 - [ ] Replace `[📸 …]` placeholders with PNG/JPG from localhost or Amplify
-- [ ] Add live URLs to Post 3 when Amplify + APIs are deployed (`docs/deploy-urls.md`)
+- [x] Path B live URL in `docs/deploy-urls.md` — https://vxyrxhcfwr.us-west-2.awsapprunner.com
+- [ ] Add Amplify dashboard URL when connected
+- [ ] Add Path A API URL when SAM deploy succeeds
 - [ ] Pin Post 3 (or a comment) with repo / demo links
 - [ ] Optional: turn Post 3 demo script into a 60–90s screen recording for LinkedIn native video
 

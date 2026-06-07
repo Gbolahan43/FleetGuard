@@ -59,7 +59,7 @@ Console → **Amazon Bedrock** → **Model access** → enable **Claude Opus 4.6
 ```cmd
 call infrastructure\scripts\use-default-aws.cmd
 infrastructure\scripts\deploy_apprunner_service.cmd
-powershell -File infrastructure\scripts\smoke_path_b.ps1 -BaseUrl https://YOUR_SERVICE.apprunner.us-west-2.awsapprunner.com
+powershell -File infrastructure\scripts\smoke_path_b.ps1 -BaseUrl https://vxyrxhcfwr.us-west-2.awsapprunner.com
 ```
 
 Stack: `fleetguard-apprunner` · Template: [../apprunner/template.yaml](../apprunner/template.yaml)

@@ -1,0 +1,11 @@
+{
+  "include": ["frontend", "ml/scripts", "ml/src", "ml/tests"],
+  "extraPaths": ["ml/src"],
+  "executionEnvironments": [
+    {
+      "root": "ml/scripts",
+      "extraPaths": ["../src"],
+      "pythonVersion": "3.11"
+    }
+  ]
+}

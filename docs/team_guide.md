@@ -118,8 +118,8 @@ Copy `.env.example` files and set API URLs after first deploy.
 ### Frontend (`frontend/.env.local`)
 
 ```env
-NEXT_PUBLIC_API_URL=          # Path A — API Gateway
-NEXT_PUBLIC_BATCH_API_URL=    # Path B — App Runner
+NEXT_PUBLIC_API_URL=          # Path A — API Gateway (pending SAM deploy)
+NEXT_PUBLIC_BATCH_API_URL=https://vxyrxhcfwr.us-west-2.awsapprunner.com
 ```
 
 ### Backend (`backend/.env`)

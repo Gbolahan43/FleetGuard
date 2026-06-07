@@ -11,7 +11,9 @@ Next.js dashboard — **Live Monitor** (Path A) and **Analyze Logs** (Path B).
 | `/` or `/live` | Live Monitor | `NEXT_PUBLIC_API_URL` |
 | `/analyze` | Analyze Logs | `NEXT_PUBLIC_BATCH_API_URL` |
 
-When `NEXT_PUBLIC_API_URL` is unset, Live Monitor uses mock data for local dev.
+When `NEXT_PUBLIC_API_URL` is unset, Live Monitor loads demo CSV and scores via Path B (`NEXT_PUBLIC_BATCH_API_URL`).
+
+**Deployed Path B:** https://vxyrxhcfwr.us-west-2.awsapprunner.com — see [../docs/deploy-urls.md](../docs/deploy-urls.md).
 
 ## Local dev
 
@@ -32,8 +34,10 @@ uvicorn app.main:app --port 8080
 Set in `.env.local`:
 
 ```env
-NEXT_PUBLIC_BATCH_API_URL=http://127.0.0.1:8080
+NEXT_PUBLIC_BATCH_API_URL=https://vxyrxhcfwr.us-west-2.awsapprunner.com
 ```
+
+Local FastAPI alternative: `http://127.0.0.1:8080` (see [../backend/README.md](../backend/README.md)).
 
 **Path A (Live):** set `NEXT_PUBLIC_API_URL` to your API Gateway URL after SAM deploy.
 
@@ -44,8 +48,8 @@ NEXT_PUBLIC_BATCH_API_URL=http://127.0.0.1:8080
 1. Amplify Console → Host web app → connect GitHub repo `Gbolahan43/FleetGuard`.
 2. Monorepo app root: `frontend/`.
 3. Environment variables:
-   - `NEXT_PUBLIC_API_URL` — API Gateway base URL
-   - `NEXT_PUBLIC_BATCH_API_URL` — App Runner URL
+   - `NEXT_PUBLIC_API_URL` — leave empty until Path A SAM deploy
+   - `NEXT_PUBLIC_BATCH_API_URL` — `https://vxyrxhcfwr.us-west-2.awsapprunner.com`
    - `AWS_REGION=us-west-2`
    - `BEDROCK_MODEL_ID=us.anthropic.claude-opus-4-6-v1`
 4. Attach IAM role to Amplify SSR compute with `bedrock:InvokeModel`.

@@ -14,12 +14,13 @@ RUN pip install --no-cache-dir \
     boto3>=1.34 \
     && pip install --no-cache-dir -r /tmp/backend-requirements.txt
 
-COPY ml/src /app/ml/src
-COPY ml/models /app/models
+# Full ml tree: train at build time (.pkl files are gitignored)
+COPY ml /app/ml
 COPY backend/app /app/app
-
 ENV PYTHONPATH=/app/ml/src
-ENV MODEL_PATH=/app/models
+ENV MODEL_PATH=/app/ml/models
+RUN python /app/ml/scripts/train.py
+
 ENV CORS_ORIGINS=*
 ENV BEDROCK_ENABLED=true
 ENV TOP_N_ANOMALIES=10

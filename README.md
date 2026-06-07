@@ -104,9 +104,9 @@ Sample data: [`ml/data/mock/fleetguard_telemetry.csv`](ml/data/mock/fleetguard_t
 
 | Asset | URL / location |
 | --- | --- |
-| **Dashboard** (Amplify) | _Set after deploy — see [docs/deploy-urls.md](docs/deploy-urls.md)_ |
-| **Path A API** (Live Monitor) | `GET /incidents`, `POST /score` |
-| **Path B API** (Analyze Logs) | `POST /api/v1/analyze-fleet` |
+| **Path B API** (Analyze Logs) | https://vxyrxhcfwr.us-west-2.awsapprunner.com |
+| **Dashboard** (Amplify) | _Set in Amplify Console — see [docs/deploy-urls.md](docs/deploy-urls.md)_ |
+| **Path A API** (Live Monitor) | _Pending SAM deploy — `GET /incidents`, `POST /score`_ |
 
 ### 5-minute judge walkthrough
 
